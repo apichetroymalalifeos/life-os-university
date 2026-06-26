@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090d0c">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Life OS">
+  <title>Life OS 2.1</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23090d0c'/%3E%3Cpath d='M16 7l9 5v8l-9 5-9-5v-8l9-5z' fill='none' stroke='%237ce38b' stroke-width='2'/%3E%3Cpath d='M16 12v8M12 16h8' stroke='%237ce38b' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
+  <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+  <header class="mobile-topbar" aria-label="Mobile command bar">
+    <a class="mobile-brand" href="#todayTop" aria-label="Life OS top">
+      <strong id="mobileTime">--:--</strong>
+      <span id="mobileStatus">Today Status</span>
+    </a>
+    <button class="primary-btn" id="mobileGenerateBtn" type="button" data-i18n="generateToday">Generate Today</button>
+  </header>
+
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="mark" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M12 3 20 7.5v9L12 21l-8-4.5v-9L12 3Z" stroke="currentColor" stroke-width="2"/>
+            <path d="M12 8v8M8 12h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div>
+          <h1>LIFE OS 2.1</h1>
+          <span data-i18n="brandSubtitle">Local Executive Operating System</span>
+        </div>
+      </div>
+
+      <section class="clock" aria-label="Current time">
+        <div class="date" id="dateText">Today</div>
+        <div class="time" id="timeText">--:--</div>
+        <div class="greeting" id="greetingText">Good morning.</div>
+      </section>
+
+      <section class="side-card">
+        <div class="card-head"><span data-i18n="languageTitle">Language</span><span data-i18n="localPreference">Local preference</span></div>
+        <div class="side-body">
+          <label><span data-i18n="languageLabel">Dashboard language</span>
+            <select id="languageSelect">
+              <option value="en">English</option>
+              <option value="th">ไทย</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section class="side-card">
+        <div class="card-head"><span data-i18n="recoveryStatus">Recovery Status</span><span data-i18n="thisMorning">This morning</span></div>
+        <div class="side-body">
+          <div class="recovery-grid">
+            <div>
+              <div class="score-xl"><span id="sleepScore">--</span><small id="sleepScoreSmall"></small></div>
+              <strong id="recoveryLabel" class="status-dot unknown">Log sleep</strong>
+            </div>
+            <div class="small-muted" data-i18n="recoveryHelp">Workout engine uses sleep to choose strength, moderate work, or recovery movement.</div>
+          </div>
+
+          <form class="sleep-form" id="sleepForm">
+            <label><span data-i18n="totalSleepHours">Total sleep hours</span>
+              <input id="sleepHours" type="number" min="0" max="14" step="0.1" placeholder="7.2">
+            </label>
+            <label><span data-i18n="deepSleep">Deep sleep %</span>
+              <input id="deepSleep" type="number" min="0" max="100" step="1" placeholder="18">
+            </label>
+            <label><span data-i18n="remSleep">REM %</span>
+              <input id="remSleep" type="number" min="0" max="100" step="1" placeholder="22">
+            </label>
+            <label><span data-i18n="wakeCount">Wake count</span>
+              <input id="wakeCount" type="number" min="0" max="20" step="1" placeholder="1">
+            </label>
+            <label class="wide"><span data-i18n="workoutOverride">Workout override</span>
+              <select id="workoutOverride">
+                <option value="auto" data-i18n="autoRecovery">Auto from recovery</option>
+                <option value="high" data-i18n="forceStrength">Force strength</option>
+                <option value="medium" data-i18n="forceModerate">Force moderate</option>
+                <option value="poor" data-i18n="forceRecovery">Force recovery walk</option>
+              </select>
+            </label>
+          </form>
+        </div>
+      </section>
+
+      <section class="side-card">
+        <div class="card-head"><span data-i18n="backup">Backup</span><span data-i18n="freeLocalJson">Free local JSON</span></div>
+        <div class="side-body">
+          <div class="backup-row">
+            <button class="ghost-btn" id="exportBtn" type="button" data-i18n="exportJson">Export JSON</button>
+            <button class="ghost-btn" id="importBtn" type="button" data-i18n="importJson">Import JSON</button>
+          </div>
+          <textarea id="backupBox" spellcheck="false" placeholder="Export appears here. Paste backup JSON here to import."></textarea>
+        </div>
+      </section>
+    </aside>
+
+    <main class="main" id="todayTop">
+      <section class="top-shell" id="progressSection">
+        <div class="panel hero-panel">
+          <div class="hero-head">
+            <div>
+              <h2 data-i18n="heroTitle">What matters today is already decided.</h2>
+              <p data-i18n="heroSubtitle">One local screen for health, learning, sales execution, investing education, training, and family.</p>
+            </div>
+            <button class="primary-btn" id="generateTodayBtn" type="button" data-i18n="generateToday">Generate Today</button>
+          </div>
+
+          <div class="mission-grid">
+            <div class="metric">
+              <p data-i18n="currentMission">Current Mission</p>
+              <strong id="currentMission">Loading current mission</strong>
+            </div>
+            <div class="metric">
+              <p data-i18n="nextMission">Next Mission</p>
+              <strong id="nextMission">Loading next mission</strong>
+            </div>
+            <div class="metric">
+              <p data-i18n="todaysProgress">Today's Progress</p>
+              <b id="progressToday">0%</b>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel progress-panel">
+          <div class="ring" id="progressRing" style="--progress:0deg"><strong id="dailyScore">0/8</strong></div>
+          <div class="stat-strip">
+            <div class="stat"><span data-i18n="week">Week</span><b id="weeklyScore">0%</b></div>
+            <div class="stat"><span data-i18n="streak">Streak</span><b id="currentStreak">0</b></div>
+            <div class="stat"><span data-i18n="best">Best</span><b id="longestStreak">0</b></div>
+          </div>
+          <div class="stat"><span data-i18n="roadmapCompletion">Roadmap Completion</span><b id="completionPct">0%</b></div>
+          <p class="small-muted"><span data-i18n="todaysSalesFocusPrefix">Today's sales focus:</span> <strong id="todayFocus">Generate today to define the objective.</strong></p>
+        </div>
+      </section>
+
+      <section class="grid" id="nowSection">
+        <section class="panel">
+          <div class="panel-title"><span data-i18n="missionTimeline">Mission Timeline</span><small data-i18n="autoHighlighted">Auto-highlighted by current time</small></div>
+          <div class="now-next">
+          <article class="action-tile now">
+              <span class="eyebrow" data-i18n="now">NOW</span>
+              <b id="nowTitle">Loading current block</b>
+              <p id="nowDetail">The dashboard updates every minute.</p>
+              <span class="countdown" id="nowCountdown">Next block soon</span>
+            </article>
+            <article class="action-tile next">
+              <span class="eyebrow" data-i18n="next30">NEXT 30 MINUTES</span>
+              <b id="nextTitle">Loading next task</b>
+              <p id="nextDetail">Upcoming transition appears here.</p>
+            </article>
+          </div>
+          <div class="schedule" id="scheduleList"></div>
+        </section>
+
+        <section class="modules" id="learnSection">
+          <article class="panel lesson-card wide" id="universityCard"></article>
+          <article class="panel lesson-card wide" id="teachMeCard"></article>
+          <article class="panel lesson-card wide" id="facultiesCard"></article>
+          <article class="panel workout-card" id="workoutCard"></article>
+          <article class="panel sales-card wide" id="salesCard"></article>
+          <article class="panel family-card wide" id="familyCard"></article>
+        </section>
+      </section>
+
+      <section class="grid" style="margin-top:14px">
+        <section class="panel">
+          <div class="panel-title"><span data-i18n="dailyChecklist">Daily Checklist</span><small data-i18n="completionAdvances">Completion advances streaks</small></div>
+          <div class="checklist">
+            <div class="checks" id="checklist"></div>
+            <div class="review-panel">
+              <button class="soft-btn" id="morningBriefBtn" type="button" data-i18n="morningBrief">Morning Brief</button>
+              <div class="brief-output" id="briefOutput"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title"><span data-i18n="nightReview">Night Review</span><small data-i18n="closeLoop">Close the loop</small></div>
+          <div class="review-panel">
+            <textarea id="nightReviewText" placeholder="What worked? What should be protected tomorrow?"></textarea>
+            <button class="primary-btn" id="nightReviewBtn" type="button" data-i18n="nightReview">Night Review</button>
+          </div>
+        </section>
+      </section>
+
+      <section class="grid settings-grid-wrap" id="settingsSection">
+        <section class="panel">
+          <div class="panel-title"><span data-i18n="settings">Settings</span><small data-i18n="freeLocalOnly">Free, local only</small></div>
+          <div class="settings-grid">
+            <div class="setting-card">
+              <strong data-i18n="localProgress">Local Progress</strong>
+              <p data-i18n="localProgressNote">Progress is stored locally on this device. Future sync can be added later.</p>
+              <p class="small-muted" id="pwaStatus">PWA status will appear here.</p>
+            </div>
+            <div class="setting-card">
+              <strong data-i18n="notifications">Notifications</strong>
+              <p data-i18n="notificationHttpsNote">Browser notifications work reliably only on HTTPS or localhost. GitHub Pages supports HTTPS for free.</p>
+              <button class="soft-btn" id="notificationPermissionBtn" type="button" data-i18n="enableReminderPermission">Enable reminder permission</button>
+              <div class="notification-times">
+                <span><b>07:30</b> <em data-i18n="morningReminder">Morning reminder</em></span>
+                <span><b>20:00</b> <em data-i18n="eveningReviewReminder">Evening review</em></span>
+                <span><b>20:30</b> <em data-i18n="windDownReminder">Wind down</em></span>
+              </div>
+              <p class="small-muted" id="notificationStatus"></p>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <nav class="mobile-bottom-nav" aria-label="Mobile navigation">
+    <a href="#nowSection" data-i18n="navNow">Now</a>
+    <a href="#learnSection" data-i18n="navLearn">Learn</a>
+    <a href="#workoutCard" data-i18n="navWorkout">Workout</a>
+    <a href="#familyCard" data-i18n="navFamily">Family</a>
+    <a href="#settingsSection" data-i18n="settings">Settings</a>
+  </nav>
+
+  <script src="src/roadmaps.generated.js"></script>
+  <script src="src/storage.js"></script>
+  <script src="src/engine.js"></script>
+  <script src="src/app.js"></script>
+</body>
+</html>
