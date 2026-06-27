@@ -15,6 +15,17 @@
   <link rel="stylesheet" href="styles/main.css">
 </head>
 <body>
+  <div class="update-banner hidden" id="updateBanner" role="status" aria-live="polite">
+    <div>
+      <strong data-i18n="updateAvailableTitle">มีเวอร์ชันใหม่ของ Life OS พร้อมใช้งาน</strong>
+      <p id="updateBannerNotes">Life OS update is ready.</p>
+    </div>
+    <div class="update-actions">
+      <button class="primary-btn" id="updateNowBtn" type="button" data-i18n="updateNow">อัปเดตตอนนี้</button>
+      <button class="ghost-btn" id="updateLaterBtn" type="button" data-i18n="updateLater">ภายหลัง</button>
+    </div>
+  </div>
+
   <header class="mobile-topbar" aria-label="Mobile command bar">
     <a class="mobile-brand" href="#todayTop" aria-label="Life OS top">
       <strong id="mobileTime">--:--</strong>
@@ -201,6 +212,15 @@
               <strong data-i18n="localProgress">Local Progress</strong>
               <p data-i18n="localProgressNote">Progress is stored locally on this device. Future sync can be added later.</p>
               <p class="small-muted" id="pwaStatus">PWA status will appear here.</p>
+              <p class="small-muted" id="appVersionText">Life OS University v--</p>
+            </div>
+            <div class="setting-card">
+              <strong data-i18n="updates">Updates</strong>
+              <p data-i18n="iphoneUpdateHelp">ถ้าใช้ iPhone และยังเห็นเวอร์ชันเก่า หลังจากกดอัปเดตแล้ว ให้ปิดแอป Life OS จาก App Switcher แล้วเปิดใหม่อีกครั้ง ถ้ายังไม่หาย ให้ลบไอคอนออกจาก Home Screen แล้ว Add to Home Screen ใหม่</p>
+              <button class="soft-btn" id="checkUpdateBtn" type="button" data-i18n="checkUpdates">ตรวจสอบอัปเดต</button>
+              <button class="ghost-btn" id="forceFreshBtn" type="button" data-i18n="forceFreshReload">ล้างแคชและโหลดใหม่</button>
+              <p class="small-muted" data-i18n="forceFreshHint">ใช้ปุ่มนี้เมื่อ iPhone ยังเปิดเวอร์ชันเก่าหลัง publish แล้ว</p>
+              <p class="small-muted" id="updateStatusText"></p>
             </div>
             <div class="setting-card">
               <strong data-i18n="notifications">Notifications</strong>

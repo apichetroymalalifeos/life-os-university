@@ -2,25 +2,47 @@
 // This file owns scheduling, roadmap advancement, recovery logic, streaks,
 // and progress calculations. Rendering lives in app.js.
 (function () {
-  const FACULTIES = ["ai", "crypto", "longevity", "sales", "psychology", "future"];
+  const FACULTIES = ["ai_automation", "crypto_macro", "longevity_health", "elite_b2b_sales", "psychology_decision", "future_trends"];
+  const LEGACY_FACULTY_MAP = {
+    ai: "ai_automation",
+    crypto: "crypto_macro",
+    longevity: "longevity_health",
+    sales: "elite_b2b_sales",
+    psychology: "psychology_decision",
+    future: "future_trends"
+  };
   const TRACKS = [...FACULTIES, "workout"];
   const REQUIRED_TASKS = ["university", "sales", "workout", "family", "morning", "night"];
   const FACULTY_ROTATION = {
-    0: "future",
-    1: "ai",
-    2: "longevity",
-    3: "crypto",
-    4: "psychology",
-    5: "sales",
-    6: "crypto"
+    0: { focus: "future_trends", reviews: ["ai_automation", "crypto_macro"] },
+    1: { focus: "ai_automation", reviews: ["crypto_macro", "longevity_health"] },
+    2: { focus: "elite_b2b_sales", reviews: ["ai_automation", "psychology_decision"] },
+    3: { focus: "crypto_macro", reviews: ["future_trends", "ai_automation"] },
+    4: { focus: "longevity_health", reviews: ["psychology_decision", "elite_b2b_sales"] },
+    5: { focus: "psychology_decision", reviews: ["elite_b2b_sales", "future_trends"] },
+    6: { focus: "future_trends", reviews: ["ai_automation", "crypto_macro"] }
   };
   const FACULTY_LABELS = {
-    ai: "AI & Automation",
-    crypto: "Crypto & Macro Investing",
-    longevity: "Longevity",
-    sales: "Elite B2B Sales",
-    psychology: "Psychology & Decision Making",
-    future: "Future Trends"
+    ai_automation: "AI & Automation",
+    crypto_macro: "Crypto & Macro Investing",
+    longevity_health: "Longevity & Health",
+    elite_b2b_sales: "Elite B2B Sales",
+    psychology_decision: "Psychology & Decision Making",
+    future_trends: "Future Trends"
+  };
+  const FACULTY_ICONS = {
+    ai_automation: "🤖",
+    crypto_macro: "💰",
+    longevity_health: "🧬",
+    elite_b2b_sales: "💼",
+    psychology_decision: "🧠",
+    future_trends: "🌍"
+  };
+  const TIME_PLANS = {
+    15: { focus: 15, reviews: [], action: 0, label: "Focus only" },
+    30: { focus: 25, reviews: [5], action: 0, label: "Focus + one review" },
+    45: { focus: 35, reviews: [5, 5], action: 0, label: "Focus + two reviews" },
+    60: { focus: 40, reviews: [5, 5], action: 10, label: "Deep focus + reviews + action plan" }
   };
 
   const schedule = [
@@ -136,19 +158,108 @@
     return state.days[key];
   }
 
+  function normalizeFacultyId(track) {
+    return LEGACY_FACULTY_MAP[track] || track;
+  }
+
+  function progressFor(state, track) {
+    const id = normalizeFacultyId(track);
+    state.progress[id] ||= { day: state.progress[track]?.day || 1, completed: state.progress[track]?.completed || 0, skipped: state.progress[track]?.skipped || 0 };
+    return state.progress[id];
+  }
+
+  function roadmapError(track) {
+    return `ข้อมูล Roadmap ของคณะ ${FACULTY_LABELS[track] || track} (${track}) ไม่ครบ กรุณาตรวจไฟล์ roadmap metadata`;
+  }
+
   function getLesson(roadmaps, track, day) {
-    const lessons = roadmaps[track].lessons;
+    const id = normalizeFacultyId(track);
+    const lessons = roadmaps[id]?.lessons;
+    if (!Array.isArray(lessons) || lessons.length < 30) {
+      return {
+        facultyId: id,
+        day: day || 1,
+        title: roadmapError(id),
+        category: "Roadmap error",
+        estimatedMinutes: 0,
+        learningGoal: roadmapError(id),
+        keywords: [],
+        recommendedSourceTypes: [],
+        missingRoadmap: true
+      };
+    }
     return lessons[Math.max(0, Math.min(lessons.length - 1, day - 1))];
+  }
+
+  function nextActionForFaculty(faculty, lesson) {
+    if (lesson.missingRoadmap) return roadmapError(faculty);
+    return {
+      ai_automation: `ให้ ChatGPT สอนเรื่อง "${lesson.title}" แล้วสร้างหนึ่ง workflow ที่ใช้ได้จริง`,
+      crypto_macro: `ให้ ChatGPT อัปเดตข้อมูลล่าสุดของ "${lesson.title}" แล้วจดหนึ่ง risk rule โดยไม่ตัดสินใจเทรด`,
+      longevity_health: `ให้ ChatGPT สอน "${lesson.title}" แบบ general education และแยก medical advice ให้ชัด`,
+      elite_b2b_sales: `นำ "${lesson.title}" ไปใช้กับบทสนทนาลูกค้าหรือ follow-up ถัดไป`,
+      psychology_decision: `ใช้ "${lesson.title}" วิเคราะห์หนึ่ง decision วันนี้`,
+      future_trends: `ให้ ChatGPT ตรวจข้อมูลล่าสุดของ "${lesson.title}" แล้วสรุป implication หนึ่งข้อ`,
+      workout: `ใช้ "${lesson.title}" เป็นแนวทาง movement โดยปรับตาม recovery`
+    }[faculty] || `เริ่มเรียน "${lesson.title}" กับ ChatGPT`;
   }
 
   function lessonForToday(state, roadmaps, track, date = new Date()) {
     const today = dayState(state, date);
-    const ref = today.lessonRefs?.[track] || { track, day: state.progress[track].day };
-    return getLesson(roadmaps, track, ref.day);
+    const id = normalizeFacultyId(track);
+    const ref = today.lessonRefs?.[id] || { track: id, day: progressFor(state, id).day };
+    return getLesson(roadmaps, id, ref.day);
   }
 
   function facultyForDate(date = new Date()) {
-    return FACULTY_ROTATION[date.getDay()] || "ai";
+    return dailyFocusPlan(date).focus;
+  }
+
+  function dailyFocusPlan(date = new Date()) {
+    const rule = FACULTY_ROTATION[date.getDay()] || FACULTY_ROTATION[1];
+    const reviews = rule.reviews.slice(0, 2);
+    const optional = FACULTIES.filter(faculty => faculty !== rule.focus && !reviews.includes(faculty));
+    return { focus: rule.focus, reviews, optional, all: [rule.focus, ...reviews, ...optional] };
+  }
+
+  function statusForFaculty(today, faculty, date = new Date()) {
+    const plan = today.dailyFocus || dailyFocusPlan(date);
+    if (today.tasks?.[faculty]) return "completed";
+    if (today.skips?.[faculty]) return "skipped";
+    if (faculty === plan.focus) return "focus";
+    if (plan.reviews.includes(faculty)) return "review";
+    return "optional";
+  }
+
+  function minutesForFaculty(today, faculty) {
+    const planMinutes = Number(today.availableMinutes || 45);
+    const timePlan = TIME_PLANS[planMinutes] || TIME_PLANS[45];
+    const daily = today.dailyFocus || { focus: faculty, reviews: [] };
+    if (faculty === daily.focus) return timePlan.focus;
+    const reviewIndex = daily.reviews.indexOf(faculty);
+    if (reviewIndex >= 0) return timePlan.reviews[reviewIndex] || 0;
+    return 0;
+  }
+
+  function facultyCardsForToday(state, roadmaps, date = new Date()) {
+    const today = dayState(state, date);
+    const plan = today.dailyFocus || dailyFocusPlan(date);
+    return plan.all.map(faculty => {
+      const lesson = lessonForToday(state, roadmaps, faculty, date);
+      const progress = progressFor(state, faculty);
+      return {
+        faculty,
+        icon: FACULTY_ICONS[faculty],
+        name: FACULTY_LABELS[faculty],
+        status: statusForFaculty(today, faculty, date),
+        day: lesson.day,
+        lesson,
+        progress,
+        estimatedMinutes: minutesForFaculty(today, faculty),
+        nextAction: nextActionForFaculty(faculty, lesson),
+        error: lesson.missingRoadmap ? roadmapError(faculty) : ""
+      };
+    });
   }
 
   function recoveryScore(state) {
@@ -188,17 +299,20 @@
     const today = dayState(state, date);
     const recovery = recoveryStatus(state);
     const customer = customers[date.getDay() % customers.length];
-    const faculty = facultyForDate(date);
+    const plan = dailyFocusPlan(date);
+    const faculty = plan.focus;
     today.generatedAt = new Date().toISOString();
     today.customer = customer;
     today.currentFaculty = faculty;
+    today.dailyFocus = plan;
+    today.availableMinutes ||= 45;
     state.university.currentFaculty = faculty;
     today.lessonRefs ||= {};
 
     FACULTIES.forEach(track => {
-      today.lessonRefs[track] = { track, day: state.progress[track].day };
+      today.lessonRefs[track] = { track, day: progressFor(state, track).day };
     });
-    today.lessonRefs.workout = { track: "workout", day: state.progress.workout.day };
+    today.lessonRefs.workout = { track: "workout", day: progressFor(state, "workout").day };
 
     today.workout = workoutPlan(lessonForToday(state, roadmaps, "workout", date), recovery);
     today.familyMission = {
@@ -215,6 +329,12 @@
     if (state.generatedDate !== dateKey(date) || !today.generatedAt) {
       return generateToday(state, roadmaps, date);
     }
+    today.dailyFocus ||= dailyFocusPlan(date);
+    today.availableMinutes ||= 45;
+    FACULTIES.forEach(track => {
+      today.lessonRefs ||= {};
+      today.lessonRefs[track] ||= { track, day: progressFor(state, track).day };
+    });
     updateWorkout(state, roadmaps, date);
     return today;
   }
@@ -259,26 +379,29 @@
   }
 
   function completeTrack(state, track, date = new Date()) {
+    track = normalizeFacultyId(track);
     const today = dayState(state, date);
     today.tasks[track] = true;
     if (TRACKS.includes(track) && !today.advanced?.[track]) {
       today.advanced ||= {};
       today.advanced[track] = true;
-      const completedLessonDay = today.lessonRefs?.[track]?.day || state.progress[track].day;
-      state.progress[track].completed += 1;
-      state.progress[track].day = Math.min(365, completedLessonDay + 1);
+      const completedLessonDay = today.lessonRefs?.[track]?.day || progressFor(state, track).day;
+      progressFor(state, track).completed += 1;
+      progressFor(state, track).day = Math.min(365, completedLessonDay + 1);
       if (FACULTIES.includes(track)) {
         state.university.history.push({ date: dateKey(date), faculty: track, day: completedLessonDay, completed: true });
+        if (today.dailyFocus?.focus === track) today.tasks.university = true;
       }
     }
     updateStreaks(state, date);
   }
 
   function skipTrack(state, track, date = new Date()) {
+    track = normalizeFacultyId(track);
     const today = dayState(state, date);
     today.skips[track] = true;
     today.tasks[track] = false;
-    if (TRACKS.includes(track)) state.progress[track].skipped += 1;
+    if (TRACKS.includes(track)) progressFor(state, track).skipped += 1;
     updateStreaks(state, date);
   }
 
@@ -313,7 +436,7 @@
   }
 
   function completionPercent(state) {
-    const totalCompleted = TRACKS.reduce((sum, key) => sum + state.progress[key].completed, 0);
+    const totalCompleted = TRACKS.reduce((sum, key) => sum + progressFor(state, key).completed, 0);
     return Math.round((totalCompleted / (365 * TRACKS.length)) * 100);
   }
 
@@ -338,60 +461,103 @@
 
   function buildTeachMePrompt(state, roadmaps, date = new Date()) {
     const today = ensureToday(state, roadmaps, date);
-    const faculty = today.currentFaculty || state.university.currentFaculty || facultyForDate(date);
+    const plan = today.dailyFocus || dailyFocusPlan(date);
+    const faculty = plan.focus;
     const lesson = lessonForToday(state, roadmaps, faculty, date);
+    const reviewLessons = plan.reviews.map(reviewFaculty => ({ faculty: reviewFaculty, lesson: lessonForToday(state, roadmaps, reviewFaculty, date) }));
+    const optionalList = plan.optional.map(optionalFaculty => `${FACULTY_ICONS[optionalFaculty]} ${FACULTY_LABELS[optionalFaculty]} (${optionalFaculty})`).join(", ");
     const recovery = recoveryStatus(state);
-    const dayProgress = state.progress[faculty];
+    const dayProgress = progressFor(state, faculty);
     const notes = notesFor(state, faculty, date);
     const goals = (state.university.goals || []).join(", ");
     const weakAreas = (state.university.weakAreas || []).join(", ") || "not enough data yet";
     const strongAreas = (state.university.strongAreas || []).join(", ") || "not enough data yet";
     const quizScore = state.university.quizScores?.[faculty] ?? "not recorded";
+    const minutes = Number(today.availableMinutes || 45);
+    const timePlan = TIME_PLANS[minutes] || TIME_PLANS[45];
 
     return [
-      "You are ChatGPT acting as my university professor, friend, mentor, and coach.",
+      "คุณคือ ChatGPT ในบทบาทอาจารย์มหาวิทยาลัย เพื่อน ที่ปรึกษา และโค้ชส่วนตัวของฉัน",
       "",
-      "Teach me in Thai.",
-      "Use the latest available knowledge. Use web search when current information matters.",
-      "Separate facts from opinions. For crypto, prefer official project blogs, GitHub, developer updates, and official documentation.",
+      "สอนฉันเป็นภาษาไทย",
+      "ใช้ความรู้ล่าสุดที่มี",
+      "หากข้อมูลมีโอกาสเปลี่ยนแปลง เช่น AI, Crypto, ข่าวเทคโนโลยี, งานวิจัยสุขภาพ หรือข้อมูลตลาด ให้ค้นหาข้อมูลล่าสุดก่อนสอน",
+      "ฉันกำลังฟังระหว่างเดินทางหรือขับรถ ใช้ภาษาง่าย เล่าเป็นเรื่อง และไม่ต้องให้ฉันดูกราฟหรืออ่านข้อความยาวระหว่างขับรถ",
+      "แยก fact, assumption, opinion ให้ชัดเจน",
       "",
-      "My profile:",
-      "- Male, born 1986",
-      "- Premium leather B2B field sales AE",
+      "โปรไฟล์ของฉัน:",
+      "- ผู้ชาย เกิดปี 1986",
+      "- Field Sales AE ขายหนังแท้/หนังเทียม B2B ระดับพรีเมียม",
       "- IF 16/8",
-      "- Hepatitis B under treatment, so protect sleep, liver recovery, stress control, and moderate exercise",
-      "- Drives every day and picks up my son around 18:00",
-      `- Long-term goals: ${goals}`,
+      "- มี Hepatitis B จึงต้องปกป้องการนอน การฟื้นตัวของตับ ความเครียด และออกกำลังแบบพอดี",
+      "- ขับรถทุกวันและไปรับลูกหลัง 16:00",
+      `- เป้าหมายระยะยาว: ${goals}`,
       "",
-      "Today from Life OS:",
-      `- Faculty: ${FACULTY_LABELS[faculty]}`,
-      `- Lesson reference: Day ${lesson.day} - ${lesson.title}`,
-      "- Target teaching time: 30-40 minutes",
-      `- Minimum available time today: ${lesson.estimatedMinutes || 30} minutes`,
-      `- Current progress: Day ${dayProgress.day}, completed ${dayProgress.completed}, skipped ${dayProgress.skipped}`,
-      `- Recovery status: ${recovery.label}${recovery.score ? ` (${recovery.score.toFixed(1)}/10)` : ""}`,
-      `- Weak areas: ${weakAreas}`,
-      `- Strong areas: ${strongAreas}`,
-      `- Latest quiz score: ${quizScore}`,
-      `- Notes from Life OS: What=${notes.what || "blank"} | So What=${notes.soWhat || "blank"} | Now What=${notes.nowWhat || "blank"}`,
+      "แผน Life OS University วันนี้:",
+      `- เวลาที่มี: ${minutes} นาที (${timePlan.label})`,
+      `- Focus Faculty: ${FACULTY_ICONS[faculty]} ${FACULTY_LABELS[faculty]} (${faculty})`,
+      `- Focus Lesson: Day ${lesson.day} - ${lesson.title}`,
+      `- Focus Category: ${lesson.category}`,
+      `- Focus Learning Goal: ${lesson.learningGoal}`,
+      `- Focus Keywords: ${(lesson.keywords || []).join(", ")}`,
+      `- Focus Recommended Source Types: ${(lesson.recommendedSourceTypes || []).join(", ")}`,
+      `- Focus Time: ${timePlan.focus} นาที`,
+      `- Review Faculty 1: ${FACULTY_ICONS[reviewLessons[0].faculty]} ${FACULTY_LABELS[reviewLessons[0].faculty]} (${reviewLessons[0].faculty}) | Day ${reviewLessons[0].lesson.day} - ${reviewLessons[0].lesson.title}`,
+      `- Review Faculty 2: ${FACULTY_ICONS[reviewLessons[1].faculty]} ${FACULTY_LABELS[reviewLessons[1].faculty]} (${reviewLessons[1].faculty}) | Day ${reviewLessons[1].lesson.day} - ${reviewLessons[1].lesson.title}`,
+      `- Optional Faculties: ${optionalList}`,
+      `- ความคืบหน้า Focus: Day ${dayProgress.day}, completed ${dayProgress.completed}, skipped ${dayProgress.skipped}`,
+      `- Recovery: ${recovery.label}${recovery.score ? ` (${recovery.score.toFixed(1)}/10)` : ""}`,
+      `- จุดอ่อน: ${weakAreas}`,
+      `- จุดแข็ง: ${strongAreas}`,
+      `- Quiz score ล่าสุด: ${quizScore}`,
+      `- Notes จาก Life OS: What=${notes.what || "blank"} | So What=${notes.soWhat || "blank"} | Now What=${notes.nowWhat || "blank"}`,
       "",
-      "Teaching style:",
-      "- Teach like a university professor.",
-      "- Explain like a friend.",
-      "- Use stories, analogies, and real-life examples.",
-      "- Connect the lesson to health, sales, investing, family, and daily life.",
-      "- Assume I may be driving, so make it easy to follow by voice.",
+      "ข้อสำคัญเกี่ยวกับแหล่งข้อมูล:",
+      "- Roadmap นี้เป็น learning path ไม่ใช่ source of truth",
+      "- ห้ามถือว่า lesson metadata เป็นคำอธิบายบทเรียน ให้ใช้เป็นหัวข้อและทิศทางเท่านั้น",
+      "- เนื้อหาบทเรียนต้องสร้างสดตอนนี้จากความรู้ของคุณ และค้นเว็บเมื่อข้อมูล current matters",
+      "- สำหรับ AI, Crypto, Longevity, Future Trends และหัวข้อเกี่ยวกับตลาด ให้ใช้ความรู้ล่าสุดและค้นเว็บเมื่อข้อมูลอาจเปลี่ยน",
+      "- สำหรับ Crypto ให้ prefer: official project blogs, GitHub, developer updates, official documentation, official announcements",
+      "- สำหรับ Longevity/Health ให้ prefer: medical guidelines, peer-reviewed research, reputable health institutions และแยก general education ออกจาก medical advice ให้ชัดเจน",
+      "- ถ้ามีความไม่แน่นอน ให้บอกระดับความมั่นใจและแหล่งข้อมูลที่ควรตรวจต่อ",
       "",
-      "End with exactly these sections:",
-      "1. Today's Action",
-      "2. Today's Summary",
-      "3. Tomorrow Preview"
+      "วิธีสอน:",
+      "- สอน Focus lesson เป็นหลัก",
+      "- Review lesson 1 และ Review lesson 2 แบบสั้น กระชับ",
+      "- ถ้าเวลามี 15 นาที ให้สอนเฉพาะ Focus ไม่ต้อง review",
+      "- ถ้าเวลามี 30 นาที ให้สอน Focus และ Review 1 แบบสั้น",
+      "- ถ้าเวลามี 45 นาที ให้สอน Focus และ Review ทั้ง 2 แบบสั้น",
+      "- ถ้าเวลามี 60 นาที ให้เพิ่ม action planning 10 นาทีท้าย",
+      "- เชื่อมโยงกับงาน AE ขายหนังแท้/หนังเทียม B2B, สุขภาพ, การลงทุน, ครอบครัว และเป้าหมายระยะยาวของฉัน",
+      "",
+      "จบบทเรียนด้วย:",
+      "1. สิ่งที่ต้องทำวันนี้",
+      "2. สรุป 5 บรรทัด",
+      "3. Preview บทเรียนพรุ่งนี้"
+    ].join("\n");
+  }
+
+  function buildDriveLessonPrompt(state, roadmaps, date = new Date()) {
+    const today = ensureToday(state, roadmaps, date);
+    today.availableMinutes = 45;
+    return [
+      buildTeachMePrompt(state, roadmaps, date),
+      "",
+      "โหมดพิเศษ: Drive Lesson",
+      "- ทำเป็นบทเรียนเสียง 30-40 นาที",
+      "- สมมติว่าฉันกำลังขับรถ",
+      "- ห้ามให้ดู chart, table, dashboard หรืออ่านข้อความยาวระหว่างขับรถ",
+      "- ใช้จังหวะการเล่าแบบฟังง่าย",
+      "- จบด้วย action หลังจอดรถที่ปลอดภัยและทำได้ทันที"
     ].join("\n");
   }
 
   window.LifeOSEngine = {
     FACULTIES,
+    LEGACY_FACULTY_MAP,
     FACULTY_LABELS,
+    FACULTY_ICONS,
+    TIME_PLANS,
     TRACKS,
     REQUIRED_TASKS,
     schedule,
@@ -401,7 +567,11 @@
     getNextThirty,
     countdownToNext,
     dayState,
+    normalizeFacultyId,
+    progressFor,
     facultyForDate,
+    dailyFocusPlan,
+    facultyCardsForToday,
     lessonForToday,
     ensureToday,
     generateToday,
@@ -415,6 +585,7 @@
     weeklyScore,
     completionPercent,
     notesFor,
-    buildTeachMePrompt
+    buildTeachMePrompt,
+    buildDriveLessonPrompt
   };
 })();

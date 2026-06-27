@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090d0c">
+  <title>Refresh Life OS</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Arial, sans-serif;
+      background: #090d0c;
+      color: #f4f7f4;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    main {
+      width: min(440px, 100%);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 12px;
+      padding: 24px;
+      background: #101715;
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 24px;
+    }
+
+    p {
+      margin: 0 0 14px;
+      color: #a8b5ad;
+      line-height: 1.6;
+    }
+
+    .status {
+      color: #7ce38b;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>กำลังโหลด Life OS เวอร์ชันล่าสุด</h1>
+    <p>ระบบจะล้าง PWA cache และ service worker เก่า โดยไม่ลบข้อมูล progress ในเครื่องนี้</p>
+    <p class="status" id="statusText">กำลังเริ่มต้น...</p>
+  </main>
+
+  <script>
+    (async function refreshLifeOs() {
+      const status = document.getElementById("statusText");
+      try {
+        status.textContent = "กำลังล้าง service worker เก่า...";
+        if ("serviceWorker" in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(registrations.map(registration => registration.unregister()));
+        }
+
+        status.textContent = "กำลังล้าง cache เก่า...";
+        if ("caches" in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.filter(key => key.startsWith("life-os-university-pwa-")).map(key => caches.delete(key)));
+        }
+
+        status.textContent = "กำลังเปิด Life OS เวอร์ชันล่าสุด...";
+      } catch (error) {
+        status.textContent = "ล้าง cache ไม่ครบ แต่จะลองโหลดใหม่";
+      } finally {
+        window.location.replace(`./index.html?fresh=${Date.now()}`);
+      }
+    })();
+  </script>
+</body>
+</html>

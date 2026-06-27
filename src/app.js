@@ -7,6 +7,10 @@
   const roadmaps = window.LIFE_OS_ROADMAPS;
   let state = Storage.load();
   let pwaStatusMessage = "";
+  const APP_VERSION = "6.3.1";
+  const LIFE_OS_CACHE_PREFIX = "life-os-university-pwa-";
+  let pendingServiceWorker = null;
+  let updateVersionInfo = null;
 
   const $ = selector => document.querySelector(selector);
   const I18N = {
@@ -133,7 +137,33 @@
       navLearn: "Learn",
       navWorkout: "Workout",
       navFamily: "Family",
-      todayStatus: "Today Status"
+      todayStatus: "Today Status",
+      startUniversityToday: "Start Today's University",
+      driveLesson: "Drive Lesson",
+      timeQuestion: "How many minutes do you have today?",
+      totalLearningTime: "Total learning time",
+      focusStatus: "Focus",
+      reviewStatus: "Review",
+      optionalStatus: "Optional",
+      completedStatus: "Completed",
+      skippedStatus: "Skipped",
+      facultyId: "Faculty ID",
+      roadmapDataError: "Roadmap data is missing. Please check faculty metadata.",
+      drivePromptCopied: "คัดลอก Prompt แล้ว เปิด ChatGPT แล้ววางเพื่อเริ่มบทเรียนเสียงวันนี้",
+      completeAllToday: "Complete All Today",
+      updates: "Updates",
+      checkUpdates: "ตรวจสอบอัปเดต",
+      updateAvailableTitle: "มีเวอร์ชันใหม่ของ Life OS พร้อมใช้งาน",
+      updateNow: "อัปเดตตอนนี้",
+      updateLater: "ภายหลัง",
+      latestVersion: "คุณใช้เวอร์ชันล่าสุดแล้ว",
+      checkingUpdates: "กำลังตรวจสอบอัปเดต...",
+      updateReady: "มีเวอร์ชันใหม่พร้อมใช้งาน",
+      updateFailed: "ตรวจสอบอัปเดตไม่สำเร็จ กรุณาลองใหม่อีกครั้ง",
+      iphoneUpdateHelp: "ถ้าใช้ iPhone และยังเห็นเวอร์ชันเก่า หลังจากกดอัปเดตแล้ว ให้ปิดแอป Life OS จาก App Switcher แล้วเปิดใหม่อีกครั้ง ถ้ายังไม่หาย ให้ลบไอคอนออกจาก Home Screen แล้ว Add to Home Screen ใหม่",
+      clearingUpdateCache: "กำลังอัปเดตและโหลดเวอร์ชันล่าสุด...",
+      forceFreshReload: "ล้างแคชและโหลดใหม่",
+      forceFreshHint: "ใช้ปุ่มนี้เมื่อ iPhone ยังเปิดเวอร์ชันเก่าหลัง publish แล้ว"
     },
     th: {
       brandSubtitle: "ระบบปฏิบัติการชีวิตแบบ Local",
@@ -258,7 +288,33 @@
       navLearn: "เรียน",
       navWorkout: "ฝึก",
       navFamily: "ครอบครัว",
-      todayStatus: "สถานะวันนี้"
+      todayStatus: "สถานะวันนี้",
+      startUniversityToday: "เริ่มมหาวิทยาลัยวันนี้",
+      driveLesson: "Drive Lesson",
+      timeQuestion: "วันนี้คุณมีเวลากี่นาที?",
+      totalLearningTime: "เวลาเรียนรวม",
+      focusStatus: "Focus",
+      reviewStatus: "Review",
+      optionalStatus: "Optional",
+      completedStatus: "Completed",
+      skippedStatus: "Skipped",
+      facultyId: "Faculty ID",
+      roadmapDataError: "ข้อมูล Roadmap ของคณะนี้ไม่ครบ กรุณาตรวจไฟล์ metadata",
+      drivePromptCopied: "คัดลอก Prompt แล้ว เปิด ChatGPT แล้ววางเพื่อเริ่มบทเรียนเสียงวันนี้",
+      completeAllToday: "Complete All Today",
+      updates: "อัปเดต",
+      checkUpdates: "ตรวจสอบอัปเดต",
+      updateAvailableTitle: "มีเวอร์ชันใหม่ของ Life OS พร้อมใช้งาน",
+      updateNow: "อัปเดตตอนนี้",
+      updateLater: "ภายหลัง",
+      latestVersion: "คุณใช้เวอร์ชันล่าสุดแล้ว",
+      checkingUpdates: "กำลังตรวจสอบอัปเดต...",
+      updateReady: "มีเวอร์ชันใหม่พร้อมใช้งาน",
+      updateFailed: "ตรวจสอบอัปเดตไม่สำเร็จ กรุณาลองใหม่อีกครั้ง",
+      iphoneUpdateHelp: "ถ้าใช้ iPhone และยังเห็นเวอร์ชันเก่า หลังจากกดอัปเดตแล้ว ให้ปิดแอป Life OS จาก App Switcher แล้วเปิดใหม่อีกครั้ง ถ้ายังไม่หาย ให้ลบไอคอนออกจาก Home Screen แล้ว Add to Home Screen ใหม่",
+      clearingUpdateCache: "กำลังอัปเดตและโหลดเวอร์ชันล่าสุด...",
+      forceFreshReload: "ล้างแคชและโหลดใหม่",
+      forceFreshHint: "ใช้ปุ่มนี้เมื่อ iPhone ยังเปิดเวอร์ชันเก่าหลัง publish แล้ว"
     }
   };
 
@@ -405,15 +461,23 @@
   }
 
   function facultyLabel(faculty) {
-    const labels = {
-      ai: lang() === "th" ? "AI & Automation" : "AI & Automation",
-      crypto: lang() === "th" ? "Crypto & Macro Investing" : "Crypto & Macro Investing",
-      longevity: lang() === "th" ? "Longevity" : "Longevity",
-      sales: lang() === "th" ? "Elite B2B Sales" : "Elite B2B Sales",
-      psychology: lang() === "th" ? "Psychology & Decision Making" : "Psychology & Decision Making",
-      future: lang() === "th" ? "Future Trends" : "Future Trends"
-    };
-    return labels[faculty] || faculty;
+    const id = Engine.normalizeFacultyId?.(faculty) || faculty;
+    return Engine.FACULTY_LABELS[id] || faculty;
+  }
+
+  function facultyIcon(faculty) {
+    const id = Engine.normalizeFacultyId?.(faculty) || faculty;
+    return Engine.FACULTY_ICONS[id] || "📚";
+  }
+
+  function statusLabel(status) {
+    return {
+      focus: t("focusStatus"),
+      review: t("reviewStatus"),
+      optional: t("optionalStatus"),
+      completed: t("completedStatus"),
+      skipped: t("skippedStatus")
+    }[status] || status;
   }
 
   function formatDate(now) {
@@ -535,48 +599,68 @@
   }
 
   function renderUniversity(today) {
-    const faculty = today.currentFaculty || state.university.currentFaculty || Engine.facultyForDate();
-    const lesson = Engine.lessonForToday(state, roadmaps, faculty);
-    const progress = state.progress[faculty];
-    const notes = Engine.notesFor(state, faculty);
-    const isDone = Boolean(Engine.dayState(state).tasks.university);
-    const isSkipped = Boolean(Engine.dayState(state).skips[faculty]);
+    const cards = Engine.facultyCardsForToday(state, roadmaps);
+    const focus = cards.find(card => card.faculty === today.dailyFocus?.focus) || cards[0];
+    const totalMinutes = cards.reduce((sum, card) => sum + Number(card.estimatedMinutes || 0), 0);
     $("#universityCard").innerHTML = `
-      <div class="panel-title">${t("university")} <small>${t("day")} ${lesson.day} / 365</small></div>
-      <div class="module-body">
+      <div class="panel-title">${t("university")} <small>Daily Focus · 6 faculties</small></div>
+      <div class="module-body university-body">
         ${today.generateStatus ? `<div class="notice good">${today.generateStatus}</div>` : ""}
-        <div class="lesson-meta">
-          <span class="pill">${facultyLabel(faculty)}</span>
-          <span class="pill">${lesson.stage}</span>
-          <span class="pill">${lesson.estimatedMinutes} min</span>
-          <span class="pill">${progress.completed} ${t("completed")}</span>
-        </div>
-        <h3>${lesson.title}</h3>
-        <p>${t("lifeOsRemembers")}</p>
-        <div class="field-grid">
-          <div class="field"><span>${t("currentFaculty")}</span><b>${facultyLabel(faculty)}</b></div>
-          <div class="field"><span>${t("lessonReference")}</span><p>${t("day")} ${lesson.day} - ${lesson.stage}</p></div>
-          <div class="field"><span>${t("availableTime")}</span><p>${lesson.estimatedMinutes} min</p></div>
-          <div class="field"><span>${t("nextAction")}</span><p>${lesson.nowWhat}</p></div>
-          <div class="field"><span>${t("weakAreas")}</span><p>${state.university.weakAreas.join(", ") || "No data yet"}</p></div>
-          <div class="field"><span>${t("strongAreas")}</span><p>${state.university.strongAreas.join(", ") || "No data yet"}</p></div>
-        </div>
-        <div class="notes-grid">
-          <label>${t("what")}
-            <textarea data-note="${faculty}:what">${notes.what || ""}</textarea>
-          </label>
-          <label>${t("soWhat")}
-            <textarea data-note="${faculty}:soWhat">${notes.soWhat || ""}</textarea>
-          </label>
-          <label>${t("nowWhat")}
-            <textarea data-note="${faculty}:nowWhat">${notes.nowWhat || ""}</textarea>
+        <div class="today-learning-summary">
+          <div>
+            <span class="eyebrow">${lang() === "th" ? "วันนี้ต้องเรียน" : "Today's Faculty"}</span>
+            <h3>${facultyIcon(focus?.faculty)} ${facultyLabel(focus?.faculty)} · ${focus?.lesson.title || ""}</h3>
+            <p>${t("totalLearningTime")}: ${totalMinutes} min · ${t("nextAction")}: ${focus?.nextAction || ""}</p>
+          </div>
+          <label class="time-select">${t("timeQuestion")}
+            <select id="learningTimeSelect">
+              ${[15, 30, 45, 60].map(minutes => `<option value="${minutes}" ${Number(today.availableMinutes || 45) === minutes ? "selected" : ""}>${minutes} นาที</option>`).join("")}
+            </select>
           </label>
         </div>
-        <div class="lesson-actions">
-          <button class="soft-btn" data-refresh="${faculty}" type="button">${t("refreshLesson")}</button>
-          <button class="${isSkipped ? "danger-btn" : "ghost-btn"}" data-skip="${faculty}" type="button">${isSkipped ? t("skipped") : t("skip")}</button>
-          <button class="primary-btn wide" data-complete="${faculty}" data-complete-task="university" type="button">${isDone ? t("completedButton") : t("complete")}</button>
+        <div class="button-row three university-actions">
+          <button class="primary-btn" id="teachMeBtn" type="button">🎓 ${t("startUniversityToday")}</button>
+          <button class="soft-btn" id="driveLessonBtn" type="button">🎧 ${t("driveLesson")}</button>
+          <a class="link-btn" href="https://chatgpt.com/" target="_blank" rel="noopener">${t("openChatGPT")}</a>
         </div>
+        <div class="faculty-card-grid">
+          ${cards.map(card => {
+            const done = Boolean(Engine.dayState(state).tasks[card.faculty]);
+            const skipped = Boolean(Engine.dayState(state).skips[card.faculty]);
+            return `
+              <article class="faculty-card ${card.status}">
+                <div class="faculty-card-head">
+                  <span class="faculty-icon">${card.icon}</span>
+                  <div>
+                    <h3>${card.name}</h3>
+                    <p>${card.faculty}</p>
+                  </div>
+                  <span class="status-pill">${statusLabel(card.status)}</span>
+                </div>
+                ${card.error ? `<div class="notice warn">${card.error}</div>` : ""}
+                <div class="field-grid compact">
+                  <div class="field"><span>${t("facultyId")}</span><p>${card.faculty}</p></div>
+                  <div class="field"><span>Status</span><p>${statusLabel(card.status)}</p></div>
+                  <div class="field"><span>${t("day")}</span><p>${card.day}</p></div>
+                  <div class="field"><span>${t("availableTime")}</span><p>${card.estimatedMinutes} min</p></div>
+                </div>
+                <h3>${card.lesson.title}</h3>
+                <p>${card.lesson.learningGoal || ""}</p>
+                <div class="lesson-meta">
+                  <span class="pill">${card.lesson.category || "Metadata"}</span>
+                  ${(card.lesson.keywords || []).slice(0, 3).map(keyword => `<span class="pill">${keyword}</span>`).join("")}
+                </div>
+                <div class="field"><span>Source types</span><p>${(card.lesson.recommendedSourceTypes || []).join(", ") || t("roadmapDataError")}</p></div>
+                <div class="field"><span>${t("nextAction")}</span><p>${card.nextAction}</p></div>
+                <div class="lesson-actions">
+                  <button class="${skipped ? "danger-btn" : "ghost-btn"}" data-skip="${card.faculty}" type="button">${skipped ? t("skipped") : t("skip")}</button>
+                  <button class="primary-btn" data-complete="${card.faculty}" type="button">${done ? t("completedButton") : t("complete")}</button>
+                </div>
+              </article>
+            `;
+          }).join("")}
+        </div>
+        <button class="ghost-btn" id="completeAllTodayBtn" type="button">${t("completeAllToday")}</button>
       </div>
     `;
   }
@@ -588,8 +672,9 @@
         <p>${t("promptReady")}</p>
         <textarea id="teachPromptBox" readonly>${today.teachPrompt || ""}</textarea>
         ${today.teachStatus ? `<div class="notice good">${today.teachStatus}</div>` : ""}
-        <div class="button-row">
-          <button class="primary-btn" id="teachMeBtn" type="button">🎓 ${t("teachMe")}</button>
+        <div class="button-row three">
+          <button class="primary-btn" id="teachMePromptBtn" type="button">🎓 ${t("startUniversityToday")}</button>
+          <button class="soft-btn" id="driveLessonPromptBtn" type="button">🎧 ${t("driveLesson")}</button>
           <a class="link-btn" href="https://chatgpt.com/" target="_blank" rel="noopener">${t("openChatGPT")}</a>
         </div>
       </div>
@@ -602,10 +687,10 @@
       <div class="module-body">
         <div class="field-grid">
           ${Engine.FACULTIES.map(faculty => {
-            const progress = state.progress[faculty];
+            const progress = Engine.progressFor(state, faculty);
             const quiz = state.university.quizScores?.[faculty] ?? "-";
             return `<div class="field">
-              <span>${facultyLabel(faculty)}</span>
+              <span>${facultyIcon(faculty)} ${facultyLabel(faculty)}</span>
               <p>${t("day")} ${progress.day} / 365 · ${progress.completed} ${t("completed")} · ${t("quizScore")} ${quiz}</p>
             </div>`;
           }).join("")}
@@ -626,8 +711,8 @@
 
   function renderSales(today) {
     const customer = localCustomer(today.customer);
-    const lesson = Engine.lessonForToday(state, roadmaps, "sales");
-    const isDone = Boolean(Engine.dayState(state).tasks.sales);
+    const lesson = Engine.lessonForToday(state, roadmaps, "elite_b2b_sales");
+    const isDone = Boolean(Engine.dayState(state).tasks.elite_b2b_sales || Engine.dayState(state).tasks.sales);
     $("#salesCard").innerHTML = `
       <div class="panel-title">${t("salesFocus")} <small>${t("premiumLeatherAE")}</small></div>
       <div class="module-body">
@@ -639,11 +724,11 @@
           <div class="field"><span>${t("closingObjective")}</span><p>${customer.closingObjective}</p></div>
         </div>
         <label>${t("meetingNotes")}
-          <textarea id="meetingNotes">${Engine.notesFor(state, "sales").nowWhat || lesson.nowWhat}</textarea>
+          <textarea id="meetingNotes">${Engine.notesFor(state, "elite_b2b_sales").nowWhat || ""}</textarea>
         </label>
         <div class="button-row">
           <button class="ghost-btn" id="meetingNotesBtn" type="button">${t("meetingNotes")}</button>
-          <button class="primary-btn" data-complete="sales" type="button">${isDone ? t("completedButton") : t("complete")}</button>
+          <button class="primary-btn" data-complete="elite_b2b_sales" data-complete-task="sales" type="button">${isDone ? t("completedButton") : t("complete")}</button>
         </div>
       </div>
     `;
@@ -704,7 +789,7 @@
   function localBrief(brief) {
     if (!brief || lang() !== "th") return brief;
     const today = Engine.ensureToday(state, roadmaps);
-    const faculty = today.currentFaculty || state.university.currentFaculty;
+    const faculty = today.dailyFocus?.focus || today.currentFaculty || state.university.currentFaculty;
     const lesson = Engine.lessonForToday(state, roadmaps, faculty);
     const current = localBlock(Engine.getCurrentBlock());
     const workout = localWorkout(today.workout);
@@ -725,7 +810,7 @@
     today.teachPrompt = Engine.buildTeachMePrompt(state, roadmaps);
     Storage.save(state);
     renderAll();
-    $("#teachMeCard")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    $("#universityCard")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   async function copyTeachPrompt(prompt) {
@@ -806,11 +891,119 @@
       return;
     }
     try {
-      await navigator.serviceWorker.register("./service-worker.js");
+      const registration = await navigator.serviceWorker.register("./service-worker.js", { updateViaCache: "none" });
+      registration.update();
+      registration.addEventListener("updatefound", () => {
+        const installingWorker = registration.installing;
+        if (!installingWorker) return;
+        pendingServiceWorker = installingWorker;
+        installingWorker.addEventListener("statechange", () => {
+          if (installingWorker.state === "installed" && navigator.serviceWorker.controller) {
+            checkForUpdates();
+          }
+        });
+      });
+      if (registration.waiting && navigator.serviceWorker.controller) {
+        pendingServiceWorker = registration.waiting;
+        checkForUpdates();
+      }
       renderPwaStatus(t("pwaReady"));
     } catch {
       renderPwaStatus(t("pwaFileMode"));
     }
+  }
+
+  function compareVersions(a, b) {
+    const left = String(a || "0").split(".").map(part => Number(part) || 0);
+    const right = String(b || "0").split(".").map(part => Number(part) || 0);
+    const length = Math.max(left.length, right.length);
+    for (let index = 0; index < length; index++) {
+      const diff = (left[index] || 0) - (right[index] || 0);
+      if (diff !== 0) return diff;
+    }
+    return 0;
+  }
+
+  function renderAppVersion() {
+    const node = $("#appVersionText");
+    if (node) node.textContent = `Life OS University v${APP_VERSION}`;
+  }
+
+  async function runFreshModeIfRequested() {
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has("fresh")) return;
+
+    if ($("#updateStatusText")) $("#updateStatusText").textContent = t("clearingUpdateCache");
+    try {
+      if ("serviceWorker" in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map(registration => registration.unregister()));
+      }
+      await clearLifeOsCaches();
+    } finally {
+      params.delete("fresh");
+      const cleanUrl = `${window.location.pathname}${params.toString() ? `?${params}` : ""}`;
+      window.history.replaceState({}, "", cleanUrl);
+    }
+  }
+
+  function showUpdateBanner(info = {}) {
+    updateVersionInfo = info;
+    const banner = $("#updateBanner");
+    if (!banner) return;
+    $("#updateBannerNotes").textContent = info.notes ? `${info.version || ""} · ${info.notes}` : t("updateReady");
+    banner.classList.remove("hidden");
+    $("#updateStatusText") && ($("#updateStatusText").textContent = t("updateReady"));
+  }
+
+  function hideUpdateBanner() {
+    $("#updateBanner")?.classList.add("hidden");
+  }
+
+  async function checkForUpdates({ manual = false } = {}) {
+    if ($("#updateStatusText") && manual) $("#updateStatusText").textContent = t("checkingUpdates");
+    try {
+      const response = await fetch(`version.json?t=${Date.now()}`, {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" }
+      });
+      if (!response.ok) throw new Error("version fetch failed");
+      const remote = await response.json();
+      updateVersionInfo = remote;
+      if (compareVersions(remote.version, APP_VERSION) > 0) {
+        showUpdateBanner(remote);
+        return true;
+      }
+      hideUpdateBanner();
+      if ($("#updateStatusText") && manual) $("#updateStatusText").textContent = t("latestVersion");
+      return false;
+    } catch {
+      if ($("#updateStatusText") && manual) $("#updateStatusText").textContent = t("updateFailed");
+      return false;
+    }
+  }
+
+  async function clearLifeOsCaches() {
+    if (!("caches" in window)) return;
+    const keys = await caches.keys();
+    await Promise.all(keys.filter(key => key.startsWith(LIFE_OS_CACHE_PREFIX)).map(key => caches.delete(key)));
+  }
+
+  async function updateNow() {
+    if ($("#updateStatusText")) $("#updateStatusText").textContent = t("clearingUpdateCache");
+    try {
+      const registration = "serviceWorker" in navigator ? await navigator.serviceWorker.getRegistration() : null;
+      const worker = pendingServiceWorker || registration?.waiting || registration?.installing;
+      if (worker) worker.postMessage({ type: "SKIP_WAITING" });
+      await clearLifeOsCaches();
+      if (registration) await registration.update();
+    } finally {
+      window.location.reload();
+    }
+  }
+
+  function forceFreshReload() {
+    window.location.href = `fresh.html?t=${Date.now()}`;
   }
 
   function bindEvents() {
@@ -840,7 +1033,7 @@
 
     $("#morningBriefBtn").addEventListener("click", () => {
       const today = Engine.ensureToday(state, roadmaps);
-      const faculty = today.currentFaculty || state.university.currentFaculty;
+      const faculty = today.dailyFocus?.focus || today.currentFaculty || state.university.currentFaculty;
       const lesson = Engine.lessonForToday(state, roadmaps, faculty);
       const current = localBlock(Engine.getCurrentBlock());
       const customer = localCustomer(today.customer);
@@ -894,8 +1087,31 @@
       renderNotificationStatus();
     });
 
+    $("#checkUpdateBtn").addEventListener("click", () => {
+      checkForUpdates({ manual: true });
+    });
+
+    $("#updateNowBtn").addEventListener("click", updateNow);
+    $("#updateLaterBtn").addEventListener("click", hideUpdateBanner);
+    $("#forceFreshBtn")?.addEventListener("click", forceFreshReload);
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") checkForUpdates();
+    });
+
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (!sessionStorage.getItem("life-os-controller-reloaded")) {
+          sessionStorage.setItem("life-os-controller-reloaded", "1");
+          window.location.reload();
+        }
+      });
+    }
+
     document.addEventListener("click", async event => {
-      const teach = event.target.closest("#teachMeBtn");
+      const teach = event.target.closest("#teachMeBtn, #teachMePromptBtn");
+      const driveLesson = event.target.closest("#driveLessonBtn, #driveLessonPromptBtn");
+      const completeAll = event.target.closest("#completeAllTodayBtn");
       const complete = event.target.closest("[data-complete]");
       const skip = event.target.closest("[data-skip]");
       const refresh = event.target.closest("[data-refresh]");
@@ -909,6 +1125,23 @@
         today.teachStatus = copied ? t("promptCopied") : t("promptCopyFailed");
         Storage.save(state);
         renderAll();
+        return;
+      }
+
+      if (driveLesson) {
+        const today = Engine.ensureToday(state, roadmaps);
+        const prompt = Engine.buildDriveLessonPrompt(state, roadmaps);
+        today.teachPrompt = prompt;
+        const copied = await copyTeachPrompt(prompt);
+        today.teachStatus = copied ? t("drivePromptCopied") : `${t("drivePromptCopied")} หากวางแล้วว่าง ให้คัดลอกจากกล่อง Prompt ด้วยตนเอง`;
+        Storage.save(state);
+        renderAll();
+        return;
+      }
+
+      if (completeAll) {
+        Engine.FACULTIES.forEach(faculty => Engine.completeTrack(state, faculty));
+        saveAndRender();
         return;
       }
 
@@ -929,10 +1162,10 @@
       }
 
       if (refresh) {
-        const track = refresh.dataset.refresh;
+        const track = Engine.normalizeFacultyId?.(refresh.dataset.refresh) || refresh.dataset.refresh;
         const today = Engine.dayState(state);
         today.lessonRefs ||= {};
-        const day = Math.min(365, state.progress[track].day + 1);
+        const day = Math.min(365, Engine.progressFor(state, track).day + 1);
         today.lessonRefs[track] = { track, day };
         saveAndRender();
       }
@@ -947,13 +1180,23 @@
       const target = event.target;
       if (target.matches("[data-note]")) {
         const [track, field] = target.dataset.note.split(":");
-        Engine.notesFor(state, track)[field] = target.value;
+        Engine.notesFor(state, Engine.normalizeFacultyId?.(track) || track)[field] = target.value;
         Storage.save(state);
       }
 
       if (target.id === "meetingNotes") {
-        Engine.notesFor(state, "sales").nowWhat = target.value;
+        Engine.notesFor(state, "elite_b2b_sales").nowWhat = target.value;
         Storage.save(state);
+      }
+    });
+
+    document.addEventListener("change", event => {
+      if (event.target.id === "learningTimeSelect") {
+        const today = Engine.ensureToday(state, roadmaps);
+        today.availableMinutes = Number(event.target.value);
+        today.teachPrompt = Engine.buildTeachMePrompt(state, roadmaps);
+        Storage.save(state);
+        renderAll();
       }
     });
   }
@@ -971,12 +1214,15 @@
     renderBriefReview();
     renderNotificationStatus();
     renderPwaStatus();
+    renderAppVersion();
     Storage.save(state);
   }
 
   bindEvents();
   renderAll();
+  runFreshModeIfRequested();
   registerServiceWorker();
+  checkForUpdates();
   setInterval(() => {
     renderTime();
     renderTopCommand();

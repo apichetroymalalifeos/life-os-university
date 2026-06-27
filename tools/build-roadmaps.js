@@ -4,10 +4,11 @@ const path = require("path");
 const root = path.resolve(__dirname, "..");
 const roadmapDir = path.join(root, "roadmaps");
 const srcDir = path.join(root, "src");
+const legacyRoadmapFiles = ["ai.json", "crypto.json", "longevity.json", "sales.json", "psychology.json", "future.json"];
 
 const tracks = {
-  ai: {
-    label: "AI Mastery",
+  ai_automation: {
+    label: "AI & Automation",
     stages: [
       ["ChatGPT Basics", ["Use clear roles", "Ask for structured answers", "Compare short vs detailed prompts", "Create reusable prompt templates"]],
       ["Prompt Engineering", ["Define context windows", "Use examples and constraints", "Design critique prompts", "Turn vague goals into tasks"]],
@@ -27,8 +28,8 @@ const tracks = {
       ["Executive AI", ["Build decision memos", "Create weekly dashboards", "Run scenario planning", "Design personal operating reviews"]]
     ]
   },
-  crypto: {
-    label: "Crypto Investor Education",
+  crypto_macro: {
+    label: "Crypto & Macro Investing",
     stages: [
       ["Bitcoin", ["Supply schedule", "Self-custody thesis", "Halving cycles", "Store of value debates"]],
       ["Ethereum", ["Smart contracts", "Gas and settlement", "Staking basics", "Application ecosystems"]],
@@ -47,8 +48,8 @@ const tracks = {
       ["Portfolio", ["Core-satellite allocation", "Thesis writing", "Exit criteria", "Quarterly review"]]
     ]
   },
-  longevity: {
-    label: "Longevity and Recovery",
+  longevity_health: {
+    label: "Longevity & Health",
     stages: [
       ["Sleep", ["Sleep opportunity", "Wake consistency", "Sleep debt", "Bedroom setup"]],
       ["Circadian Rhythm", ["Morning sunlight", "Meal timing", "Evening light", "Travel rhythm"]],
@@ -67,8 +68,8 @@ const tracks = {
       ["Latest Research", ["Read abstracts", "Separate signal from hype", "Apply conservatively", "Update routines"]]
     ]
   },
-  sales: {
-    label: "Premium Leather B2B Sales",
+  elite_b2b_sales: {
+    label: "Elite B2B Sales",
     stages: [
       ["Prospecting", ["Target interior firms", "Qualify hospitality buyers", "Map marine refit accounts", "Find aviation upholstery leads"]],
       ["Pain Points", ["Material durability", "Color consistency", "Delivery reliability", "Warranty anxiety"]],
@@ -85,8 +86,8 @@ const tracks = {
       ["Hospitality", ["High-traffic durability", "Maintenance cost", "Brand ambience", "Rollout consistency"]]
     ]
   },
-  psychology: {
-    label: "Psychology and Decision Making",
+  psychology_decision: {
+    label: "Psychology & Decision Making",
     stages: [
       ["Persuasion", ["Trust before argument", "Reciprocity", "Social proof", "Authority signals"]],
       ["Behavioral Economics", ["Loss aversion", "Anchoring", "Choice architecture", "Status quo bias"]],
@@ -98,7 +99,7 @@ const tracks = {
       ["Decision Science", ["Decision journal", "Expected value", "Pre-mortem", "Review loops"]]
     ]
   },
-  future: {
+  future_trends: {
     label: "Future Trends",
     stages: [
       ["AI", ["Agentic workflows", "Model commoditization", "AI-native companies", "Human-AI leverage"]],
@@ -128,80 +129,53 @@ function makeLesson(trackKey, day) {
   const track = tracks[trackKey];
   const stageSpan = Math.ceil(365 / track.stages.length);
   const stageIndex = Math.min(track.stages.length - 1, Math.floor((day - 1) / stageSpan));
-  const [stage, topics] = track.stages[stageIndex];
+  const [category, topics] = track.stages[stageIndex];
   const topic = topics[(day - 1) % topics.length];
-  const title = `${stage}: ${topic}`;
-  const estimatedMinutes = trackKey === "crypto" ? 20 : trackKey === "workout" ? 30 : trackKey === "sales" ? 12 : trackKey === "psychology" ? 20 : trackKey === "future" ? 20 : 25;
-
-  const commonTasks = {
-    ai: [`Open one AI tool and test ${topic.toLowerCase()}.`, "Write one reusable prompt.", "Save one practical use case for sales or life admin."],
-    crypto: [`Study ${topic.toLowerCase()} without making a trade.`, "Write one risk note.", "Update your investor journal with one rule."],
-    longevity: [`Apply one habit related to ${topic.toLowerCase()} today.`, "Note the recovery signal you will watch.", "Protect sleep and stress before adding intensity."],
-    sales: [`Use today's topic in one customer conversation.`, "Record the buyer pain point.", "Confirm one next step in CRM or notes."],
-    psychology: [`Observe ${topic.toLowerCase()} in one real decision today.`, "Write one bias or mental model note.", "Apply it to sales, investing, or family communication."],
-    future: [`Read or think about ${topic.toLowerCase()} as a long-term trend.`, "Separate one fact from one opinion.", "Write one implication for career, investing, or family."],
-    workout: [`Run the ${topic.toLowerCase()} session only if recovery allows.`, "Stop before exhaustion.", "Log how you feel after training."]
-  };
+  const title = `${category}: ${topic}`;
+  const estimatedMinutes = trackKey === "crypto_macro" ? 20 : trackKey === "workout" ? 30 : trackKey === "elite_b2b_sales" ? 12 : trackKey === "psychology_decision" ? 20 : trackKey === "future_trends" ? 20 : 25;
 
   return {
+    facultyId: trackKey,
     day,
-    stage,
     title,
-    goal: goalFor(trackKey, stage, topic),
+    category,
     estimatedMinutes,
-    tasks: commonTasks[trackKey],
-    what: whatFor(trackKey, stage, topic),
-    soWhat: soWhatFor(trackKey, stage, topic),
-    nowWhat: nowWhatFor(trackKey, topic)
+    learningGoal: learningGoalFor(trackKey, category),
+    keywords: keywordsFor(category, topic),
+    recommendedSourceTypes: recommendedSourceTypesFor(trackKey)
   };
 }
 
-function goalFor(track, stage, topic) {
+function learningGoalFor(track, category) {
   const goals = {
-    ai: `Turn ${stage.toLowerCase()} into one repeatable workflow, not trivia.`,
-    crypto: `Understand ${topic.toLowerCase()} well enough to avoid emotional investing.`,
-    longevity: `Make ${topic.toLowerCase()} a practical recovery lever for long-term health.`,
-    sales: `Use ${topic.toLowerCase()} to improve trust and advance premium leather opportunities.`,
-    psychology: `Use ${topic.toLowerCase()} to make better decisions and communicate with more precision.`,
-    future: `Understand ${topic.toLowerCase()} as a trend that may affect work, investing, and family planning.`,
-    workout: `Match movement to recovery so training supports energy instead of draining it.`
+    ai_automation: `Build practical understanding of ${category} and turn it into a useful workflow.`,
+    crypto_macro: `Build investment education around ${category} without treating the roadmap as financial advice.`,
+    longevity_health: `Understand ${category} as general health education, not personal medical advice.`,
+    elite_b2b_sales: `Apply ${category} to premium B2B leather sales execution.`,
+    psychology_decision: `Use ${category} to improve judgment, communication, and decision quality.`,
+    future_trends: `Understand ${category} as a trend area and separate durable signal from hype.`,
+    workout: `Use ${category} as recovery-aware movement guidance.`
   };
   return goals[track];
 }
 
-function whatFor(track, stage, topic) {
-  return {
-    ai: `Learn the ${topic.toLowerCase()} pattern inside ${stage}.`,
-    crypto: `Study the mechanics and risk of ${topic.toLowerCase()}.`,
-    longevity: `Review how ${topic.toLowerCase()} affects recovery, liver load, and longevity.`,
-    sales: `Practice ${topic.toLowerCase()} in a real B2B premium leather context.`,
-    psychology: `Study ${topic.toLowerCase()} as a practical decision-making tool.`,
-    future: `Map ${topic.toLowerCase()} as a future trend and identify what is fact versus opinion.`,
-    workout: `Use ${topic.toLowerCase()} as today's default training option.`
-  }[track];
+function keywordsFor(category, topic) {
+  return Array.from(new Set([
+    category,
+    topic,
+    ...topic.split(/\s+/).filter(word => word.length > 3)
+  ])).slice(0, 6);
 }
 
-function soWhatFor(track, stage, topic) {
+function recommendedSourceTypesFor(track) {
   return {
-    ai: "AI skill compounds when each lesson becomes a saved workflow.",
-    crypto: "Capital survives when education leads decisions instead of price emotion.",
-    longevity: "Health improves when sleep, stress, liver care, and training intensity agree.",
-    sales: "Premium buyers respond to confidence, specificity, and disciplined follow-up.",
-    psychology: "Better decisions compound across sales, investing, health, and family life.",
-    future: "Future awareness helps you prepare without being pulled into hype.",
-    workout: "The right workout today protects consistency for the next decade."
-  }[track];
-}
-
-function nowWhatFor(track, topic) {
-  return {
-    ai: `Spend the next block creating one prompt for ${topic.toLowerCase()}.`,
-    crypto: `Read for 20 minutes, then write one rule about ${topic.toLowerCase()}.`,
-    longevity: `Choose one behavior today that supports ${topic.toLowerCase()}.`,
-    sales: `Use ${topic.toLowerCase()} in the next visit or follow-up.`,
-    psychology: `Apply ${topic.toLowerCase()} to one decision before the day ends.`,
-    future: `Write one real-life implication of ${topic.toLowerCase()}.`,
-    workout: `Start easy, check breathing, and keep the session recovery-friendly.`
+    ai_automation: ["official product documentation", "model release notes", "developer documentation", "reputable technical analysis"],
+    crypto_macro: ["official project blogs", "GitHub", "developer updates", "official documentation", "official announcements"],
+    longevity_health: ["medical guidelines", "peer-reviewed research", "reputable health institutions", "clinical review articles"],
+    elite_b2b_sales: ["sales books", "industry case studies", "CRM notes", "customer interviews"],
+    psychology_decision: ["behavioral science books", "peer-reviewed research", "decision science articles", "case studies"],
+    future_trends: ["official company announcements", "developer updates", "research papers", "reputable industry analysis"],
+    workout: ["reputable health institutions", "exercise science guidelines", "physical therapy resources"]
   }[track];
 }
 
@@ -216,6 +190,11 @@ function buildRoadmap(trackKey) {
 
 fs.mkdirSync(roadmapDir, { recursive: true });
 fs.mkdirSync(srcDir, { recursive: true });
+
+for (const file of legacyRoadmapFiles) {
+  const filePath = path.join(roadmapDir, file);
+  if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+}
 
 const bundle = {};
 for (const key of Object.keys(tracks)) {
