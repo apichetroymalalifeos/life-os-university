@@ -1,0 +1,6 @@
+{
+  "version": "6.2.0",
+  "build": "2026-06-27-001",
+  "updatedAt": "2026-06-27T20:15:00+07:00",
+  "notes": "Added PWA auto update and version checker"
+}
