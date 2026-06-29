@@ -677,6 +677,188 @@ textarea {
   gap: 14px;
 }
 
+.sleep-dashboard {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.sleep-card-grid,
+.sleep-intel-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  padding: 15px;
+}
+
+.sleep-card {
+  min-width: 0;
+  display: grid;
+  gap: 9px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, .035);
+}
+
+.sleep-card.wide,
+.daily-plan {
+  grid-column: 1 / -1;
+}
+
+.sleep-card.good {
+  border-color: rgba(124, 227, 139, .36);
+  background: var(--green-soft);
+}
+
+.sleep-card.warn {
+  border-color: rgba(240, 165, 50, .36);
+  background: var(--amber-soft);
+}
+
+.sleep-card.score-card {
+  border-color: rgba(127, 179, 255, .34);
+}
+
+.sleep-card span,
+.sleep-metric span,
+.sleep-bar span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.sleep-card strong {
+  font-size: 38px;
+  line-height: 1;
+}
+
+.sleep-card b {
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.sleep-card p {
+  margin: 0;
+  color: var(--soft);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.sleep-bar {
+  display: grid;
+  gap: 5px;
+}
+
+.sleep-bar > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.sleep-bar i {
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .08);
+}
+
+.sleep-bar i::before {
+  content: "";
+  display: block;
+  width: var(--bar);
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--green), var(--blue));
+}
+
+.sleep-plan-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.sleep-plan-list p {
+  padding: 9px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, .03);
+}
+
+.trend-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.trend-card {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(0, 0, 0, .12);
+}
+
+.sleep-metric {
+  display: grid;
+  gap: 2px;
+}
+
+.sleep-metric b {
+  font-size: 15px;
+}
+
+.sleep-metric small {
+  color: var(--muted);
+}
+
+.sleep-log-form-wrap {
+  padding: 0 15px 15px;
+}
+
+.manual-sleep-form {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.manual-sleep-form .wide,
+.habit-checks,
+.manual-sleep-form .primary-btn,
+.manual-sleep-form .small-muted {
+  grid-column: 1 / -1;
+}
+
+.habit-checks {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.habit-checks legend {
+  padding: 0 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.habit-checks label {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 8px;
+  color: var(--soft);
+  font-size: 12px;
+}
+
 .lesson-card {
   min-height: 310px;
   display: flex;
@@ -1076,7 +1258,7 @@ textarea {
     left: 0;
     z-index: 60;
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     gap: 1px;
     padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
     border-top: 1px solid var(--line);
@@ -1128,6 +1310,12 @@ textarea {
     .field-grid,
     .field-grid.compact,
     .faculty-card-grid,
+    .sleep-card-grid,
+    .sleep-intel-grid,
+    .trend-grid,
+    .sleep-plan-list,
+    .manual-sleep-form,
+    .habit-checks,
     .today-learning-summary,
     .checklist,
     .stat-strip,

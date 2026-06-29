@@ -16,6 +16,7 @@
     version: "6.1",
     generatedDate: null,
     sleep: { hours: "", deep: "", rem: "", wakes: "" },
+    sleepLogs: [],
     progress: {
       ai_automation: { day: 1, completed: 0, skipped: 0 },
       crypto_macro: { day: 1, completed: 0, skipped: 0 },
@@ -35,7 +36,7 @@
     },
     days: {},
     notes: {},
-    settings: { workoutOverride: "auto", language: "en", notificationsEnabled: false },
+    settings: { workoutOverride: "auto", language: "en", notificationsEnabled: false, sleepFormOpen: false },
     streaks: { current: 0, longest: 0, lastFullCompleteDate: null }
   };
 
@@ -46,6 +47,9 @@
   function mergeDefaults(raw) {
     const state = Object.assign(clone(defaultState), raw || {});
     state.sleep = Object.assign(clone(defaultState.sleep), state.sleep || {});
+    state.sleepLogs = Array.isArray(state.sleepLogs) && state.sleepLogs.length
+      ? state.sleepLogs
+      : clone(window.LifeOSSleep?.SAMPLE_LOGS || []);
     state.progress = Object.assign(clone(defaultState.progress), state.progress || {});
     Object.entries(LEGACY_FACULTY_MAP).forEach(([legacy, current]) => {
       if (state.progress[legacy] && !state.progress[current]) {

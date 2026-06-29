@@ -320,6 +320,9 @@ function Publish-LifeOs {
 
   Write-Host ""
   Write-Host "Publish สำเร็จ GitHub Pages จะ deploy อัตโนมัติ" -ForegroundColor Green
+  Write-Host "หลัง GitHub Actions เป็นสีเขียว ให้เปิดบนมือถือ:" -ForegroundColor Green
+  Write-Host "https://apichetroymalalifeos.github.io/life-os-university/index.html?fresh=1"
+  Write-Host "ถ้า fresh.html ยัง 404 ให้ใช้ index.html?fresh=1 ก่อน เพราะหน้านี้อยู่ในไฟล์หลัก"
   if ($OpenActions) {
     Start-Process $ActionsUrl
   }

@@ -1,6 +1,6 @@
 {
-    "version":  "6.3.1",
-    "build":  "2026-06-28-005",
-    "updatedAt":  "2026-06-28T01:54:04+07:00",
-    "notes":  "Added iPhone stale PWA cache refresh link"
+    "version":  "6.4.0",
+    "build":  "2026-06-29-001",
+    "updatedAt":  "2026-06-29T08:30:00+07:00",
+    "notes":  "Added Sleep Optimization and Sleep Intelligence"
 }

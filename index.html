@@ -204,6 +204,33 @@
         </section>
       </section>
 
+      <section class="sleep-dashboard" id="sleepSection">
+        <section class="panel sleep-panel wide">
+          <div class="panel-title">
+            <span>Sleep Optimization</span>
+            <small>Manual screenshot log · rule-based</small>
+          </div>
+          <div id="sleepOptimization"></div>
+        </section>
+
+        <section class="panel sleep-panel wide">
+          <div class="panel-title">
+            <span>Sleep Intelligence</span>
+            <small>Trend · debt · habits · recovery · streak</small>
+          </div>
+          <div id="sleepIntelligence"></div>
+        </section>
+
+        <section class="panel sleep-panel wide">
+          <div class="panel-title">
+            <span>Manual Sleep Log</span>
+            <small>JSON/localStorage only</small>
+          </div>
+          <button class="soft-btn" id="toggleSleepLogForm" type="button">เพิ่มข้อมูลการนอนจากรูปแคป</button>
+          <div id="sleepLogFormWrap" class="sleep-log-form-wrap"></div>
+        </section>
+      </section>
+
       <section class="grid settings-grid-wrap" id="settingsSection">
         <section class="panel">
           <div class="panel-title"><span data-i18n="settings">Settings</span><small data-i18n="freeLocalOnly">Free, local only</small></div>
@@ -244,10 +271,12 @@
     <a href="#learnSection" data-i18n="navLearn">Learn</a>
     <a href="#workoutCard" data-i18n="navWorkout">Workout</a>
     <a href="#familyCard" data-i18n="navFamily">Family</a>
+    <a href="#sleepSection">Sleep</a>
     <a href="#settingsSection" data-i18n="settings">Settings</a>
   </nav>
 
   <script src="src/roadmaps.generated.js"></script>
+  <script src="src/sleep.js"></script>
   <script src="src/storage.js"></script>
   <script src="src/engine.js"></script>
   <script src="src/app.js"></script>

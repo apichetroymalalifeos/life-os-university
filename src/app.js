@@ -4,10 +4,11 @@
 (function () {
   const Storage = window.LifeOSStorage;
   const Engine = window.LifeOSEngine;
+  const Sleep = window.LifeOSSleep;
   const roadmaps = window.LIFE_OS_ROADMAPS;
   let state = Storage.load();
   let pwaStatusMessage = "";
-  const APP_VERSION = "6.3.1";
+  const APP_VERSION = "6.4.0";
   const LIFE_OS_CACHE_PREFIX = "life-os-university-pwa-";
   let pendingServiceWorker = null;
   let updateVersionInfo = null;
@@ -786,6 +787,249 @@
     $("#nightReviewText").value = today.review || "";
   }
 
+  function sleepLogs() {
+    state.sleepLogs ||= Sleep.clone(Sleep.SAMPLE_LOGS);
+    return Sleep.sortedLogs(state.sleepLogs);
+  }
+
+  function sleepMetric(label, value, note = "") {
+    return `<div class="sleep-metric"><span>${label}</span><b>${value}</b>${note ? `<small>${note}</small>` : ""}</div>`;
+  }
+
+  function sleepBar(label, value, max = 100) {
+    const pct = Math.max(0, Math.min(100, Math.round((Number(value) / max) * 100)));
+    return `
+      <div class="sleep-bar">
+        <div><span>${label}</span><b>${value}${max === 100 ? "%" : ""}</b></div>
+        <i style="--bar:${pct}%"></i>
+      </div>
+    `;
+  }
+
+  function renderSleepOptimization() {
+    const logs = sleepLogs();
+    const latest = Sleep.latestLog(logs);
+    const analysis = Sleep.analyzeDaily(latest, logs);
+    const node = $("#sleepOptimization");
+    if (!node) return;
+    if (!analysis) {
+      node.innerHTML = `<div class="notice warn">ยังไม่มีข้อมูลการนอน</div>`;
+      return;
+    }
+    const log = analysis.log;
+    const plan = [
+      "05:30 ตื่นนอน รับแสง ดื่มน้ำ เดินเบา ๆ",
+      "06:00–07:00 เตรียมตัว เริ่มวันแบบไม่รีบ",
+      "09:00 ดื่มกาแฟได้ แต่ไม่เกิน 2 แก้ว",
+      "หลัง 14:00 งดคาเฟอีน",
+      "10:00–17:00 ช่วงเหมาะออกกำลังกาย",
+      "18:00 รับลูก / กิจวัตรครอบครัว",
+      "18:30–19:00 มื้อเย็น ไม่หนักเกินไป",
+      "20:00 เริ่มลดงาน ลดเรื่องเครียด",
+      "20:30 ลดแสงในบ้าน ลดแสงจอ",
+      "21:00 งดงาน งดข่าว งดโซเชียลหนัก ๆ",
+      "21:15 อาบน้ำอุ่น / เตรียมของพรุ่งนี้",
+      "21:30 อ่านหนังสือเบา ๆ หรือฟังเสียงผ่อนคลาย",
+      "21:45 ฝึกหายใจ 4-2-6 หรือยืดเหยียดเบา ๆ",
+      "22:00 เข้านอน"
+    ];
+
+    node.innerHTML = `
+      ${analysis.holidayNote ? `<div class="notice warn">${analysis.holidayNote}</div>` : ""}
+      <div class="sleep-card-grid">
+        <article class="sleep-card score-card">
+          <span>Sleep Score Card</span>
+          <strong>${log.sleep_score}</strong>
+          <p>${log.date} · ${log.day_type}</p>
+        </article>
+        <article class="sleep-card">
+          <span>Sleep Timeline Card</span>
+          <b>${log.bedtime} → ${log.wake_time}</b>
+          <p>เป้าหมาย ${log.target_bedtime}–${log.target_wake_time} · ${Sleep.formatMinutes(log.target_sleep_minutes)}</p>
+        </article>
+        <article class="sleep-card">
+          <span>Sleep Stage Card</span>
+          ${sleepBar("Deep", log.deep_sleep_percent)}
+          ${sleepBar("Light", log.light_sleep_percent)}
+          ${sleepBar("REM", log.rem_sleep_percent)}
+        </article>
+        <article class="sleep-card">
+          <span>Breathing & SpO2 Card</span>
+          <b>Breathing ${log.breathing_quality_score ?? "-"} / 100</b>
+          <p>SpO2 ${log.spo2_range || "-"} · HR ${log.heart_rate_range || "-"} · BR ${log.breathing_rate_range || "-"}</p>
+        </article>
+        <article class="sleep-card good">
+          <span>Strength Card</span>
+          <b>${analysis.strengths[0] || "ยังไม่มีจุดแข็งเด่น"}</b>
+          <p>${analysis.strengths.slice(1).join(" · ")}</p>
+        </article>
+        <article class="sleep-card warn">
+          <span>Weakness Card</span>
+          <b>${analysis.primaryWeakness}</b>
+          <p>${log.notes || "ดูแนวโน้ม 7 วันก่อนตัดสินใจรุนแรง"}</p>
+        </article>
+        <article class="sleep-card">
+          <span>Today Fix Card</span>
+          <b>${analysis.todayFix}</b>
+          <p>เน้น sleep consistency มากกว่าฝืนตื่นเช้า</p>
+        </article>
+        <article class="sleep-card">
+          <span>Tonight Target Card</span>
+          <b>${analysis.tonightTarget}</b>
+          <p>${analysis.medicalNote}</p>
+        </article>
+      </div>
+      <article class="sleep-card daily-plan">
+        <span>Daily Sleep Plan Card</span>
+        <div class="sleep-plan-list">${plan.map(item => `<p>${item}</p>`).join("")}</div>
+      </article>
+    `;
+  }
+
+  function renderSleepIntelligence() {
+    const logs = sleepLogs();
+    const node = $("#sleepIntelligence");
+    if (!node) return;
+    const trends = [7, 30, 90].map(days => Sleep.trend(logs, days));
+    const debt7 = Sleep.sleepDebt(logs, 7);
+    const debt30 = Sleep.sleepDebt(logs, 30);
+    const habit = Sleep.habitImpact(logs);
+    const recovery = Sleep.recoveryScore(logs);
+    const streak = Sleep.sleepStreak(logs);
+    const weekly = Sleep.weeklySummary(logs);
+
+    node.innerHTML = `
+      <div class="sleep-intel-grid">
+        <article class="sleep-card wide">
+          <span>Sleep Score Trend</span>
+          <div class="trend-grid">
+            ${trends.map(item => `
+              <div class="trend-card">
+                <b>${item.days} วัน</b>
+                ${sleepMetric("Avg Score", item.averageSleepScore || "-")}
+                ${sleepMetric("Avg Sleep", Sleep.formatMinutes(item.averageSleepMinutes))}
+                ${sleepMetric("Deep", `${item.averageDeepPercent || 0}%`)}
+                ${sleepMetric("REM", `${item.averageRemPercent || 0}%`)}
+                ${sleepMetric("เข้านอนตรงเป้า", `${item.bedtimeOnTargetDays}/${item.count}`)}
+                ${sleepMetric("นอนครบเป้า", `${item.sleepTargetDays}/${item.count}`)}
+              </div>
+            `).join("")}
+          </div>
+        </article>
+        <article class="sleep-card">
+          <span>Total Sleep Trend</span>
+          ${trends.map(item => sleepBar(`${item.days} วัน`, item.averageSleepMinutes, 450)).join("")}
+        </article>
+        <article class="sleep-card">
+          <span>REM Trend</span>
+          ${trends.map(item => sleepBar(`${item.days} วัน`, item.averageRemPercent)).join("")}
+        </article>
+        <article class="sleep-card">
+          <span>Deep Sleep Trend</span>
+          ${trends.map(item => sleepBar(`${item.days} วัน`, item.averageDeepPercent)).join("")}
+        </article>
+        <article class="sleep-card warn">
+          <span>Sleep Debt Tracker</span>
+          <b>7 วัน: ${debt7.debt} นาที · ${debt7.status}</b>
+          <p>30 วัน: ${debt30.debt} นาที · ${debt30.status}</p>
+          <p>${debt7.advice}</p>
+        </article>
+        <article class="sleep-card">
+          <span>Habit Impact Analyzer</span>
+          ${habit.ready ? `
+            <b>ช่วยที่สุด: ${habit.best.label} (${habit.best.scoreDelta.toFixed(1)} score)</b>
+            <p>ทำร้ายที่สุด: ${habit.worst.label} (${habit.worst.scoreDelta.toFixed(1)} score)</p>
+            <p>Insight rule-based: ลด habit ที่ทำให้ bedtime delay เพิ่ม และรักษา habit ที่เพิ่ม REM/Deep</p>
+          ` : `<b>${habit.message}</b><p>ตอนนี้มี ${logs.length} วัน</p>`}
+        </article>
+        <article class="sleep-card good">
+          <span>Recovery Score</span>
+          <strong>${recovery.score}</strong>
+          <p>${recovery.status}</p>
+        </article>
+        <article class="sleep-card">
+          <span>Sleep Streak</span>
+          <b>Current ${streak.current} · Best ${streak.best}</b>
+          <p>สำเร็จ: ${streak.passedItems.join(", ") || "-"}</p>
+          <p>หลุด: ${streak.missedItems.join(", ") || "-"}</p>
+          <p>${streak.weeklyGoal}</p>
+          <p>${streak.message}</p>
+        </article>
+        <article class="sleep-card wide">
+          <span>Weekly Sleep Summary</span>
+          <div class="field-grid compact">
+            <div class="field"><span>Avg Sleep</span><p>${Sleep.formatMinutes(weekly.averageSleepMinutes)}</p></div>
+            <div class="field"><span>Avg Score</span><p>${weekly.averageSleepScore || "-"}</p></div>
+            <div class="field"><span>Deep / REM</span><p>${weekly.averageDeepPercent || 0}% / ${weekly.averageRemPercent || 0}%</p></div>
+            <div class="field"><span>Workday / Holiday</span><p>${weekly.averageWorkdayScore || "-"} / ${weekly.averageHolidayScore || "-"}</p></div>
+            <div class="field"><span>Workday bedtime</span><p>${weekly.workdayBedtimeOnTarget}</p></div>
+            <div class="field"><span>Workday wake</span><p>${weekly.workdayWakeOnTarget}</p></div>
+            <div class="field"><span>Workday sleep target</span><p>${weekly.workdaySleepTarget}</p></div>
+            <div class="field"><span>Recurring weakness</span><p>${weekly.recurringWeakness}</p></div>
+          </div>
+          <p>${weekly.trend}</p>
+        </article>
+      </div>
+    `;
+  }
+
+  function renderSleepLogForm() {
+    const wrap = $("#sleepLogFormWrap");
+    if (!wrap) return;
+    const isOpen = state.settings.sleepFormOpen;
+    if (!isOpen) {
+      wrap.innerHTML = "";
+      return;
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    const fields = [
+      ["date", "วันที่", "date", today],
+      ["sleep_score", "Sleep Score", "number", ""],
+      ["bedtime", "Bedtime", "time", "22:00"],
+      ["wake_time", "Wake Time", "time", "05:30"],
+      ["total_sleep_minutes", "Total Sleep Minutes", "number", "450"],
+      ["deep_sleep_minutes", "Deep Sleep Minutes", "number", ""],
+      ["deep_sleep_percent", "Deep Sleep Percent", "number", ""],
+      ["light_sleep_minutes", "Light Sleep Minutes", "number", ""],
+      ["light_sleep_percent", "Light Sleep Percent", "number", ""],
+      ["rem_sleep_minutes", "REM Sleep Minutes", "number", ""],
+      ["rem_sleep_percent", "REM Sleep Percent", "number", ""],
+      ["awake_count", "Awake Count", "number", "0"],
+      ["sleep_continuity_score", "Sleep Continuity Score", "number", ""],
+      ["breathing_quality_score", "Breathing Quality Score", "number", ""],
+      ["heart_rate_range", "Heart Rate Range", "text", ""],
+      ["spo2_range", "SpO2 Range", "text", ""],
+      ["breathing_rate_range", "Breathing Rate Range", "text", ""]
+    ];
+    wrap.innerHTML = `
+      <form class="manual-sleep-form" id="manualSleepLogForm">
+        <label>ประเภทวัน
+          <select name="day_type">
+            <option value="workday">workday</option>
+            <option value="weekend">weekend</option>
+            <option value="holiday">holiday</option>
+          </select>
+        </label>
+        ${fields.map(([name, label, type, value]) => `
+          <label>${label}
+            <input name="${name}" type="${type}" ${type === "number" ? "step=\"1\"" : ""} value="${value}">
+          </label>
+        `).join("")}
+        <label class="wide">Notes
+          <textarea name="notes" placeholder="บันทึกจากรูปแคปหรือสิ่งที่เกิดขึ้นก่อนนอน"></textarea>
+        </label>
+        <fieldset class="habit-checks">
+          <legend>Habits checklist</legend>
+          ${Sleep.HABITS.map(([key, label]) => `
+            <label><input name="${key}" type="checkbox"> ${label}</label>
+          `).join("")}
+        </fieldset>
+        <button class="primary-btn" type="submit">บันทึก Sleep Log</button>
+        <p class="small-muted">ข้อมูลนี้ใช้ติดตามพฤติกรรมและแนวโน้ม ไม่ใช่คำแนะนำการรักษา หากมีอาการผิดปกติควรปรึกษาแพทย์</p>
+      </form>
+    `;
+  }
+
   function localBrief(brief) {
     if (!brief || lang() !== "th") return brief;
     const today = Engine.ensureToday(state, roadmaps);
@@ -1030,6 +1274,10 @@
 
     $("#generateTodayBtn").addEventListener("click", generateTodayFlow);
     $("#mobileGenerateBtn").addEventListener("click", generateTodayFlow);
+    $("#toggleSleepLogForm")?.addEventListener("click", () => {
+      state.settings.sleepFormOpen = !state.settings.sleepFormOpen;
+      saveAndRender();
+    });
 
     $("#morningBriefBtn").addEventListener("click", () => {
       const today = Engine.ensureToday(state, roadmaps);
@@ -1190,6 +1438,24 @@
       }
     });
 
+    document.addEventListener("submit", event => {
+      if (event.target.id !== "manualSleepLogForm") return;
+      event.preventDefault();
+      const log = Sleep.buildLogFromForm(event.target);
+      state.sleepLogs = sleepLogs().filter(item => item.date !== log.date);
+      state.sleepLogs.push(log);
+      state.sleepLogs = Sleep.sortedLogs(state.sleepLogs);
+      state.sleep = {
+        hours: (Number(log.total_sleep_minutes) / 60).toFixed(1),
+        deep: log.deep_sleep_percent,
+        rem: log.rem_sleep_percent,
+        wakes: log.awake_count
+      };
+      state.settings.sleepFormOpen = false;
+      saveAndRender();
+      $("#sleepSection")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+
     document.addEventListener("change", event => {
       if (event.target.id === "learningTimeSelect") {
         const today = Engine.ensureToday(state, roadmaps);
@@ -1212,6 +1478,9 @@
     renderLessons();
     renderChecklist();
     renderBriefReview();
+    renderSleepOptimization();
+    renderSleepIntelligence();
+    renderSleepLogForm();
     renderNotificationStatus();
     renderPwaStatus();
     renderAppVersion();
