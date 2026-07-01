@@ -8,7 +8,7 @@
   const roadmaps = window.LIFE_OS_ROADMAPS;
   let state = Storage.load();
   let pwaStatusMessage = "";
-  const APP_VERSION = "6.4.0";
+  const APP_VERSION = "6.4.1";
   const LIFE_OS_CACHE_PREFIX = "life-os-university-pwa-";
   let pendingServiceWorker = null;
   let updateVersionInfo = null;
@@ -321,18 +321,24 @@
 
   const BLOCK_I18N = {
     th: {
-      morning: ["Morning Reset", "ดื่มน้ำ รับแดด ยืดเหยียด และทำสมาธิ", "น้ำ แสงแดด ยืดเหยียด สมาธิ"],
-      university: ["Life OS University", "สร้าง Teach Me prompt แล้วให้ ChatGPT เป็นผู้สอน", "Life OS จำความคืบหน้า ส่วน ChatGPT สอน"],
-      ai: ["เรียน AI", "ทำบทเรียน AI ของวันนี้ให้เสร็จ", "โฟกัส 30 นาทีเพื่อเพิ่มทักษะ AI"],
+      wake: ["ตื่น + ดื่มน้ำ", "ตื่น ดื่มน้ำ และรับแสงถ้ามี", "เริ่มวันเบา ๆ เพื่อรักษา sleep consistency"],
+      mobility: ["Mobility 10 นาที", "ยืดเหยียดเบา ๆ 10 นาที", "ขยับข้อ หายใจนิ่ง ไม่เร่ง"],
+      leavePrep: ["เตรียมออกจากบ้าน", "เตรียมออกไปส่งลูกที่โรงเรียน", "กุญแจ กระเป๋า เส้นทาง และใจเย็น"],
+      schoolDropoff: ["ส่งลูกไปโรงเรียน", "ส่งลูกชายไปโรงเรียน — ขับรถปลอดภัย ไม่ต้องเรียน ไม่ต้องดูจอ", "Driving block: ห้ามอ่าน ห้ามพิมพ์ ห้ามดูกราฟ"],
+      postDriveReset: ["Reset หลังขับรถ", "Reset หลังขับรถ: หายใจ 2 นาที + ดื่มน้ำ", "เปลี่ยนจากโหมดขับรถเข้าสู่เช้าวันทำงาน"],
+      university: ["AI & Automation สั้น", "เรียน AI แบบฟังได้ 20–25 นาที และทำ action เดียว", "Short mode: ไม่ต้องดูจอ ไม่ต้องอ่านข้อความยาว"],
+      personalPrep: ["อาบน้ำ แต่งตัว", "อาบน้ำ แต่งตัว และเตรียมงาน", "เตรียมตัวแบบไม่รีบ"],
+      commute: ["เดินทาง / เข้าโหมดงาน", "เดินทางหรือเปลี่ยนเข้าสู่ work mode อย่างปลอดภัย", "ถ้าขับรถ ใช้ audio-safe เท่านั้น"],
+      ai: ["เรียน AI", "ทำบทเรียน AI แบบ short mode", "โฟกัส 20–25 นาทีเพื่อเพิ่มทักษะ AI"],
       workPrep: ["เตรียมงาน", "เตรียมเส้นทาง ตัวอย่างสินค้า และเป้าหมายลูกค้ารายแรก", "เปลี่ยนจากโหมดเรียนรู้เข้าสู่โหมดลงสนาม"],
       work: ["เริ่มงาน", "วางแผนเส้นทางและผลลัพธ์ที่ต้องการจากลูกค้า", "ทบทวนบัญชีลูกค้า ตัวอย่างสินค้า และ follow-up"],
       breathing: ["หายใจก่อนพบลูกค้า", "สงบใจ 2 นาทีก่อนเข้าพบลูกค้ารายแรก", "ลดความเครียดก่อนงานพบลูกค้า"],
-      visits: ["เข้าพบลูกค้า", "พบลูกค้าและเก็บ pain point", "ใช้เวลาขับรถฟัง learning audio"],
+      visits: ["Field Sales Driving", "พบลูกค้าและเก็บ pain point ระหว่างขับรถใช้ audio-safe เท่านั้น", "ห้ามอ่าน ห้ามพิมพ์ ห้ามดู chart ระหว่างขับรถ"],
       meal: ["มื้อแรก", "เปิด eating window ด้วยมื้อที่สะอาด", "โปรตีน ไฟเบอร์ คาร์บดี และน้ำ"],
       walk: ["เดินคุมกลูโคส", "เดิน 10-15 นาที", "ช่วยเรื่องน้ำตาล ความเครียด และการย่อย"],
-      visits2: ["เข้าพบลูกค้า", "ปิดรอบเข้าพบและกำหนด next step", "ลูกค้ารายที่สองและสาม บันทึก notes"],
-      familyPickup: ["ไปรับลูก", "รับลูกและปิดงานที่ค้างอย่างสงบ", "เปลี่ยนจากโหมดขายเข้าสู่โหมดครอบครัว"],
-      workout: ["Workout", "ออกกำลังตาม recovery", "ขยับร่างกายระหว่างรอลูกซ้อมฟุตซอล"],
+      visits2: ["Field Sales Driving", "ปิดรอบ visit และกำหนด next step ระหว่างขับรถใช้ audio-safe เท่านั้น", "ลูกค้ารายที่สองและสาม บันทึกหลังจอดรถ"],
+      familyPickup: ["รับลูก / เดินทาง", "รับลูกชายและเดินทางอย่างปลอดภัย", "Family first; ไม่ดูจอระหว่างขับรถ"],
+      workout: ["Recovery Movement", "ขยับเบา ๆ หลังจอดรถและมีพลังพอ", "เดินสั้น ๆ mobility หรือหายใจก่อนมื้อเย็น"],
       learning: ["Learning Block", "เรียนต่อจากคณะวันนี้ถ้ายังมีพลัง", "หมุนเวียน 6 คณะ: AI, crypto, longevity, sales, psychology, future"],
       crypto: ["เรียน Crypto", "ศึกษาโดยไม่เทรดตามอารมณ์", "15-30 นาทีสำหรับการศึกษาการลงทุน"],
       dinner: ["มื้อเย็น", "กินมื้อเย็นและปิด eating window", "อยู่กับครอบครัว งดกินต่อหลัง 19:00"],
@@ -455,9 +461,9 @@
     const mission = Engine.dayState(state).familyMission || {};
     if (lang() !== "th") return mission;
     return {
-      title: "ไปรับลูกและใช้เวลาเชื่อมต่อ 20 นาที",
-      goal: "ไปรับลูก สนับสนุนการซ้อมฟุตซอล แล้วให้ความสนใจเต็มที่โดยไม่ multitask",
-      task: "ถามคำถามดี ๆ หนึ่งข้อเกี่ยวกับการซ้อม แล้วฟังโดยไม่เช็กมือถือ"
+      title: "ส่งลูกชายไปโรงเรียน + รับลูกชายตอนเย็น",
+      goal: "เช้า: ส่งลูกชายไปโรงเรียนอย่างปลอดภัย · เย็น: รับลูกชายและใช้เวลาคุณภาพ 15–20 นาที",
+      task: "ระหว่างขับรถไม่เรียน ไม่ดูจอ ไม่พิมพ์ หลังจอดแล้วค่อยจัดการงานหรือบทเรียน"
     };
   }
 
@@ -615,7 +621,7 @@
           </div>
           <label class="time-select">${t("timeQuestion")}
             <select id="learningTimeSelect">
-              ${[15, 30, 45, 60].map(minutes => `<option value="${minutes}" ${Number(today.availableMinutes || 45) === minutes ? "selected" : ""}>${minutes} นาที</option>`).join("")}
+              ${[15, 25, 30, 45, 60].map(minutes => `<option value="${minutes}" ${Number(today.availableMinutes || 25) === minutes ? "selected" : ""}>${minutes} นาที</option>`).join("")}
             </select>
           </label>
         </div>
@@ -752,10 +758,14 @@
   function renderFamily(today) {
     const isDone = Boolean(Engine.dayState(state).tasks.family);
     $("#familyCard").innerHTML = `
-      <div class="panel-title">${t("family")} <small>${t("after1600")}</small></div>
+      <div class="panel-title">${t("family")} <small>Morning + ${t("after1600")}</small></div>
       <div class="module-body">
         <h3>${localFamilyMission().title}</h3>
         <p>${localFamilyMission().goal}</p>
+        <div class="field-grid compact">
+          <div class="field"><span>Morning</span><p>ส่งลูกชายไปโรงเรียน 06:00–06:45 · ขับรถปลอดภัย ไม่ต้องเรียน ไม่ต้องดูจอ</p></div>
+          <div class="field"><span>Evening</span><p>รับลูกชาย / ใช้เวลาคุณภาพ 15–20 นาที</p></div>
+        </div>
         <div class="field"><span>${t("todaysMission")}</span><p>${localFamilyMission().task}</p></div>
         <button class="primary-btn" data-complete="family" type="button">${isDone ? t("completedButton") : t("complete")}</button>
       </div>
@@ -818,8 +828,11 @@
     }
     const log = analysis.log;
     const plan = [
-      "05:30 ตื่นนอน รับแสง ดื่มน้ำ เดินเบา ๆ",
-      "06:00–07:00 เตรียมตัว เริ่มวันแบบไม่รีบ",
+      "05:30 ตื่นนอน ดื่มน้ำ รับแสงถ้ามี",
+      "05:45–05:55 mobility / stretch 10 นาที",
+      "05:55–06:00 เตรียมออกจากบ้าน",
+      "06:00–06:45 ส่งลูกชายไปโรงเรียน ขับรถปลอดภัย ไม่ดูจอ",
+      "06:45–07:00 Reset หลังขับรถ: หายใจ 2 นาที + ดื่มน้ำ",
       "09:00 ดื่มกาแฟได้ แต่ไม่เกิน 2 แก้ว",
       "หลัง 14:00 งดคาเฟอีน",
       "10:00–17:00 ช่วงเหมาะออกกำลังกาย",

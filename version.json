@@ -1,6 +1,6 @@
 {
-    "version":  "6.4.0",
-    "build":  "2026-06-29-001",
-    "updatedAt":  "2026-06-29T08:30:00+07:00",
-    "notes":  "Added Sleep Optimization and Sleep Intelligence"
+    "version":  "6.4.1",
+    "build":  "2026-07-01-001",
+    "updatedAt":  "2026-07-01T08:30:00+07:00",
+    "notes":  "Added morning school drop-off routine and driving-safe schedule"
 }

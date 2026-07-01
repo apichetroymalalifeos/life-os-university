@@ -40,29 +40,34 @@
   };
   const TIME_PLANS = {
     15: { focus: 15, reviews: [], action: 0, label: "Focus only" },
+    25: { focus: 25, reviews: [], action: 0, label: "Short morning mode" },
     30: { focus: 25, reviews: [5], action: 0, label: "Focus + one review" },
     45: { focus: 35, reviews: [5, 5], action: 0, label: "Focus + two reviews" },
     60: { focus: 40, reviews: [5, 5], action: 10, label: "Deep focus + reviews + action plan" }
   };
 
   const schedule = [
-    { start: "06:00", end: "07:30", id: "morning", title: "Morning Reset", mission: "Drink water, get sunlight, stretch, meditate.", detail: "Water, sunlight, stretching, meditation." },
-    { start: "07:30", end: "08:00", id: "university", title: "Life OS University", mission: "Generate the Teach Me prompt and learn with ChatGPT.", detail: "Life OS remembers progress. ChatGPT teaches." },
-    { start: "08:00", end: "08:30", id: "workPrep", title: "Work Prep", mission: "Prepare route, samples, and first customer objective.", detail: "Transition from learning into field execution." },
+    { start: "05:30", end: "05:45", id: "wake", title: "Wake + Hydrate", mission: "Wake up, drink water, light exposure if available.", detail: "Start gently. Protect sleep consistency and recovery." },
+    { start: "05:45", end: "05:55", id: "mobility", title: "10-minute Mobility", mission: "Do light mobility or stretching for 10 minutes.", detail: "Move joints, breathe calmly, keep it easy." },
+    { start: "05:55", end: "06:00", id: "leavePrep", title: "Prepare to Leave", mission: "Prepare to leave home for school drop-off.", detail: "Keys, bag, route, calm transition." },
+    { start: "06:00", end: "06:45", id: "schoolDropoff", title: "School Drop-off", mission: "ส่งลูกชายไปโรงเรียน — ขับรถปลอดภัย ไม่ต้องเรียน ไม่ต้องดูจอ", detail: "Driving block: no reading, no typing, no charts. Focus only on safe driving." },
+    { start: "06:45", end: "07:00", id: "postDriveReset", title: "Post-drive Reset", mission: "Reset หลังขับรถ: หายใจ 2 นาที + ดื่มน้ำ", detail: "Water, 2-minute breathing, calm transition." },
+    { start: "07:00", end: "07:25", id: "university", title: "AI & Automation Short Learning", mission: "Short, listening-friendly AI learning with one practical action.", detail: "20-25 minutes. No long reading. Use ChatGPT after safe parking or at home." },
+    { start: "07:25", end: "08:00", id: "personalPrep", title: "Shower + Dress", mission: "Shower, dress, and prepare for work.", detail: "Prepare samples, clothes, and work essentials without rushing." },
+    { start: "08:00", end: "08:30", id: "commute", title: "Commute / Work Transition", mission: "Commute or transition into work mode safely.", detail: "Driving block if on the road: audio-safe only." },
     { start: "08:30", end: "09:50", id: "work", title: "Work Start", mission: "Plan route and customer outcomes.", detail: "Review accounts, samples, and follow-up commitments." },
     { start: "09:50", end: "10:00", id: "breathing", title: "Pre-customer Breathing", mission: "Two minutes of calm before the first visit.", detail: "Lower stress before customer-facing work." },
-    { start: "10:00", end: "12:00", id: "visits", title: "Customer Visits", mission: "Visit customers and capture pain points.", detail: "Use driving time for learning audio." },
+    { start: "10:00", end: "12:00", id: "visits", title: "Field Sales Driving", mission: "Visit customers and capture pain points. Use only audio-safe actions while driving.", detail: "Driving block: no reading, no typing, no charts while moving." },
     { start: "12:00", end: "13:00", id: "meal", title: "First Meal", mission: "Open eating window with a clean meal.", detail: "Protein, fiber, clean carbs, hydrate." },
     { start: "13:00", end: "13:15", id: "walk", title: "Glucose Walk", mission: "Walk 10-15 minutes.", detail: "Support glucose control, stress, and digestion." },
-    { start: "13:15", end: "16:00", id: "visits2", title: "Customer Visits", mission: "Finish visits and define next steps.", detail: "Second and third visits. Record notes." },
-    { start: "16:00", end: "17:00", id: "familyPickup", title: "Pickup Transition", mission: "Pick up son and close work loops.", detail: "Shift from sales mode to family mode." },
-    { start: "17:00", end: "17:30", id: "workout", title: "Workout", mission: "Train according to recovery.", detail: "Move while waiting for futsal training." },
-    { start: "17:30", end: "18:15", id: "learning", title: "Rotating Learning Block", mission: "Continue today's faculty if energy allows.", detail: "Weekday faculty rotation for AI, crypto, longevity, sales, psychology, and future trends." },
+    { start: "13:15", end: "16:00", id: "visits2", title: "Field Sales Driving", mission: "Finish visits and define next steps. Use only audio-safe actions while driving.", detail: "Driving block: no reading, no typing, no charts while moving." },
+    { start: "16:00", end: "18:00", id: "familyPickup", title: "Pick up Son / Travel", mission: "Pick up son and travel safely. Family first; no screen while driving.", detail: "Driving block: no reading, no typing, no charts while moving." },
+    { start: "18:00", end: "18:15", id: "workout", title: "Recovery Movement", mission: "Move gently only if safely parked and energy is good.", detail: "Short walk, mobility, or breathing before dinner." },
     { start: "18:15", end: "19:00", id: "dinner", title: "Dinner", mission: "Eat dinner and close eating window.", detail: "Family presence. No grazing after 19:00." },
     { start: "19:00", end: "20:00", id: "family", title: "Family Mission", mission: "Spend intentional time together.", detail: "Be present and reduce phone use." },
     { start: "20:00", end: "20:30", id: "reflection", title: "Reflection / Learning", mission: "Review notes, quiz score, and tomorrow preview.", detail: "Life OS stores memory. ChatGPT handles explanation." },
     { start: "20:30", end: "22:00", id: "night", title: "Wind-down", mission: "Run night review and protect sleep.", detail: "Low light, prepare tomorrow, no hard stimulation." },
-    { start: "22:00", end: "06:00", id: "sleep", title: "Sleep", mission: "Sleep. This is the main recovery block.", detail: "Protect recovery, liver health, hormones, and longevity." }
+    { start: "22:00", end: "05:30", id: "sleep", title: "Sleep", mission: "Sleep. This is the main recovery block.", detail: "Protect recovery, liver health, hormones, and longevity." }
   ];
 
   const customers = [
@@ -305,7 +310,7 @@
     today.customer = customer;
     today.currentFaculty = faculty;
     today.dailyFocus = plan;
-    today.availableMinutes ||= 45;
+    today.availableMinutes ||= 25;
     state.university.currentFaculty = faculty;
     today.lessonRefs ||= {};
 
@@ -316,9 +321,9 @@
 
     today.workout = workoutPlan(lessonForToday(state, roadmaps, "workout", date), recovery);
     today.familyMission = {
-      title: "Present pickup and 20-minute connection",
-      goal: "Pick up your son, support futsal, then give him focused attention without multitasking.",
-      task: "Ask one good question about training and listen without checking the phone."
+      title: "Morning school drop-off + evening family presence",
+      goal: "ส่งลูกชายไปโรงเรียนตอนเช้า และรับลูกชาย/ใช้เวลาคุณภาพตอนเย็น",
+      task: "เช้า: ส่งลูกชายไปโรงเรียนอย่างปลอดภัย · เย็น: รับลูกชายและใช้เวลาคุณภาพ 15–20 นาที"
     };
     state.generatedDate = dateKey(date);
     return today;
@@ -330,7 +335,7 @@
       return generateToday(state, roadmaps, date);
     }
     today.dailyFocus ||= dailyFocusPlan(date);
-    today.availableMinutes ||= 45;
+    today.availableMinutes ||= 25;
     FACULTIES.forEach(track => {
       today.lessonRefs ||= {};
       today.lessonRefs[track] ||= { track, day: progressFor(state, track).day };
@@ -474,7 +479,7 @@
     const strongAreas = (state.university.strongAreas || []).join(", ") || "not enough data yet";
     const quizScore = state.university.quizScores?.[faculty] ?? "not recorded";
     const minutes = Number(today.availableMinutes || 45);
-    const timePlan = TIME_PLANS[minutes] || TIME_PLANS[45];
+    const timePlan = TIME_PLANS[minutes] || TIME_PLANS[25];
 
     return [
       "คุณคือ ChatGPT ในบทบาทอาจารย์มหาวิทยาลัย เพื่อน ที่ปรึกษา และโค้ชส่วนตัวของฉัน",
@@ -483,6 +488,7 @@
       "ใช้ความรู้ล่าสุดที่มี",
       "หากข้อมูลมีโอกาสเปลี่ยนแปลง เช่น AI, Crypto, ข่าวเทคโนโลยี, งานวิจัยสุขภาพ หรือข้อมูลตลาด ให้ค้นหาข้อมูลล่าสุดก่อนสอน",
       "ฉันกำลังฟังระหว่างเดินทางหรือขับรถ ใช้ภาษาง่าย เล่าเป็นเรื่อง และไม่ต้องให้ฉันดูกราฟหรืออ่านข้อความยาวระหว่างขับรถ",
+      "วันนี้ช่วง 06:00–06:45 ฉันต้องขับรถไปส่งลูกชาย จึงต้องเป็นบทเรียนแบบฟังได้ ไม่ต้องดูจอ และใช้เวลาสั้นลงถ้าจำเป็น",
       "แยก fact, assumption, opinion ให้ชัดเจน",
       "",
       "โปรไฟล์ของฉัน:",
@@ -490,7 +496,7 @@
       "- Field Sales AE ขายหนังแท้/หนังเทียม B2B ระดับพรีเมียม",
       "- IF 16/8",
       "- มี Hepatitis B จึงต้องปกป้องการนอน การฟื้นตัวของตับ ความเครียด และออกกำลังแบบพอดี",
-      "- ขับรถทุกวันและไปรับลูกหลัง 16:00",
+      "- ขับรถไปส่งลูกชาย 06:00–06:45 ทุกเช้า และไปรับลูกหลัง 16:00",
       `- เป้าหมายระยะยาว: ${goals}`,
       "",
       "แผน Life OS University วันนี้:",
@@ -525,6 +531,7 @@
       "- สอน Focus lesson เป็นหลัก",
       "- Review lesson 1 และ Review lesson 2 แบบสั้น กระชับ",
       "- ถ้าเวลามี 15 นาที ให้สอนเฉพาะ Focus ไม่ต้อง review",
+      "- ถ้าเวลามี 20–25 นาที ให้ใช้ short mode: ฟังได้, ไม่ต้องดูจอ, one practical action เท่านั้น",
       "- ถ้าเวลามี 30 นาที ให้สอน Focus และ Review 1 แบบสั้น",
       "- ถ้าเวลามี 45 นาที ให้สอน Focus และ Review ทั้ง 2 แบบสั้น",
       "- ถ้าเวลามี 60 นาที ให้เพิ่ม action planning 10 นาทีท้าย",
@@ -539,7 +546,7 @@
 
   function buildDriveLessonPrompt(state, roadmaps, date = new Date()) {
     const today = ensureToday(state, roadmaps, date);
-    today.availableMinutes = 45;
+    today.availableMinutes = 25;
     return [
       buildTeachMePrompt(state, roadmaps, date),
       "",
