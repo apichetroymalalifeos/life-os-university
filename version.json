@@ -1,6 +1,6 @@
 {
-    "version":  "6.4.2",
-    "build":  "2026-07-08-001",
-    "updatedAt":  "2026-07-08T08:30:00+07:00",
-    "notes":  "Fixed complete button lesson advancement and added progress debug tools"
+  "version": "7.0.0",
+  "build": "2026-07-08-002",
+  "updatedAt": "2026-07-08T22:10:00+07:00",
+  "notes": "Added Executive Decision Intelligence Engine with morning brief, priority radar, reflection, and decision memory"
 }

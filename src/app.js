@@ -8,7 +8,7 @@
   const roadmaps = window.LIFE_OS_ROADMAPS;
   let state = Storage.load();
   let pwaStatusMessage = "";
-  const APP_VERSION = "6.4.2";
+  const APP_VERSION = "7.0.0";
   const LIFE_OS_CACHE_PREFIX = "life-os-university-pwa-";
   let pendingServiceWorker = null;
   let updateVersionInfo = null;
@@ -390,6 +390,15 @@
 
   function t(key) {
     return I18N[lang()]?.[key] || I18N.en[key] || key;
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll("\"", "&quot;")
+      .replaceAll("'", "&#039;");
   }
 
   function applyStaticTranslations() {
@@ -795,6 +804,162 @@
     const today = Engine.dayState(state);
     $("#briefOutput").textContent = localBrief(today.brief) || t("briefEmpty");
     $("#nightReviewText").value = today.review || "";
+  }
+
+  function executiveMeta(item) {
+    const confidence = item.confidence || "Medium";
+    const data = (item.dataUsed || []).join(", ");
+    return `
+      <div class="explain-meta">
+        <span>Confidence: ${escapeHtml(confidence)}</span>
+        <span>Data Used: ${escapeHtml(data || "Local state")}</span>
+      </div>
+    `;
+  }
+
+  function radarTone(level) {
+    return { yellow: "warn-yellow", orange: "warn-orange", red: "warn-red" }[level] || "warn-yellow";
+  }
+
+  function formatMoney(value) {
+    return new Intl.NumberFormat(lang() === "th" ? "th-TH" : "en-US", {
+      maximumFractionDigits: 0
+    }).format(Number(value || 0));
+  }
+
+  function renderExecutiveBrief() {
+    const node = $("#executiveBrief");
+    if (!node) return;
+    const brief = Engine.buildExecutiveBrief(state, roadmaps);
+    const { parts } = brief;
+    const reflection = state.executive.reflections?.[Engine.dateKey()] || {};
+    const decisions = brief.decisionMemory.latest || [];
+    const scoreClass = brief.score >= 85 ? "good" : brief.score >= 70 ? "steady" : brief.score >= 55 ? "warn" : "risk";
+
+    node.innerHTML = `
+      <div class="executive-grid">
+        <article class="executive-card executive-score ${scoreClass}">
+          <span>Today's Executive Score</span>
+          <strong>${brief.score}</strong>
+          <p>${brief.greeting}. Read this in 30 seconds, then decide.</p>
+          <div class="mini-trend">
+            <b>7D ${brief.trend.seven.average || brief.score}</b>
+            <b>30D ${brief.trend.thirty.average || brief.score}</b>
+            <b>90D ${brief.trend.ninety.average || brief.score}</b>
+          </div>
+          ${executiveMeta(brief.explainability)}
+        </article>
+
+        <article class="executive-card">
+          <span>Health Intelligence</span>
+          <h3>${escapeHtml(parts.health.recommendation)}</h3>
+          <p><b>Workout:</b> ${escapeHtml(parts.health.workout?.type || "")} · ${escapeHtml(parts.health.workout?.duration || "")}</p>
+          <p><b>WHY:</b> ${escapeHtml(parts.health.why)}</p>
+          ${executiveMeta(parts.health)}
+        </article>
+
+        <article class="executive-card">
+          <span>Learning Intelligence</span>
+          <h3>${escapeHtml(parts.learning.focusFacultyName)} · Day ${parts.learning.currentDay}</h3>
+          <p>${escapeHtml(parts.learning.lessonTitle)}</p>
+          <p><b>Review:</b> ${escapeHtml(parts.learning.reviewFacultyNames.join(" + "))}</p>
+          <p><b>WHY:</b> ${escapeHtml(parts.learning.why)}</p>
+          ${executiveMeta(parts.learning)}
+        </article>
+
+        <article class="executive-card">
+          <span>Sales Intelligence</span>
+          <h3>${escapeHtml(parts.sales.topCustomer.name)}</h3>
+          <p><b>Status:</b> ${escapeHtml(parts.sales.topCustomer.status)} · ${escapeHtml(parts.sales.topCustomer.preparationStatus)}</p>
+          <p><b>WHY:</b> ${escapeHtml(parts.sales.why)}</p>
+          <div class="compact-list">
+            ${parts.sales.customers.slice(0, 3).map(customer => `<small>${escapeHtml(customer.name)} · ${escapeHtml(customer.status)}</small>`).join("")}
+          </div>
+          ${executiveMeta(parts.sales)}
+        </article>
+
+        <article class="executive-card">
+          <span>Family Intelligence</span>
+          <h3>${escapeHtml(parts.family.morningMission)}</h3>
+          <p>${escapeHtml(parts.family.eveningMission)}</p>
+          <p><b>WHY:</b> ${escapeHtml(parts.family.why)}</p>
+          ${executiveMeta(parts.family)}
+        </article>
+
+        <article class="executive-card">
+          <span>Finance Intelligence</span>
+          <h3>${escapeHtml(parts.finance.portfolioGoal)}</h3>
+          <p>Target ${formatMoney(parts.finance.targetAmount)} · DCA ${parts.finance.monthlyDcaPercent}% · Risk ${escapeHtml(parts.finance.riskLevel)}</p>
+          <p><b>Recommend review:</b> ${escapeHtml(parts.finance.recommendation)}</p>
+          <p><b>WHY:</b> ${escapeHtml(parts.finance.why)}</p>
+          ${executiveMeta(parts.finance)}
+        </article>
+
+        <article class="executive-card wide">
+          <span>Today's Top 3 Priorities</span>
+          <div class="priority-stack">
+            ${brief.priorities.map((priority, index) => `
+              <div class="priority-item">
+                <b>${index + 1}. ${escapeHtml(priority.title)}</b>
+                <p><b>WHY:</b> ${escapeHtml(priority.why)}</p>
+                <small>Impact: ${escapeHtml(priority.expectedImpact)} · Time: ${escapeHtml(priority.estimatedTime)}</small>
+              </div>
+            `).join("")}
+          </div>
+        </article>
+
+        <article class="executive-card">
+          <span>Decision Radar</span>
+          <div class="radar-list">
+            ${brief.radar.map(item => `
+              <div class="radar-item ${radarTone(item.level)}">
+                <b>${escapeHtml(item.level.toUpperCase())} · ${escapeHtml(item.title)}</b>
+                <p>${escapeHtml(item.why)}</p>
+                ${executiveMeta(item)}
+              </div>
+            `).join("") || "<p>No major warning detected.</p>"}
+          </div>
+        </article>
+
+        <article class="executive-card">
+          <span>Opportunity Radar</span>
+          <div class="radar-list">
+            ${brief.opportunities.map(item => `
+              <div class="opportunity-item">
+                <b>${escapeHtml(item.title)}</b>
+                <p>${escapeHtml(item.benefit)}</p>
+                <small>WHY: ${escapeHtml(item.why)}</small>
+                ${executiveMeta(item)}
+              </div>
+            `).join("")}
+          </div>
+        </article>
+
+        <article class="executive-card wide">
+          <span>Reflection Engine + Decision Memory</span>
+          <div class="memory-grid">
+            <form class="reflection-form" id="executiveReflectionForm">
+              ${brief.reflectionQuestions.map((question, index) => {
+                const key = ["wentWell", "improve", "learned"][index];
+                return `<label>${escapeHtml(question)}<textarea name="${key}" rows="2">${escapeHtml(reflection[key] || "")}</textarea></label>`;
+              }).join("")}
+              <button class="soft-btn" type="submit">Save Evening Reflection</button>
+            </form>
+            <form class="decision-form" id="decisionMemoryForm">
+              <label>Major decision<input name="title" type="text" placeholder="Example: customer follow-up priority"></label>
+              <label>Reason<textarea name="reason" rows="2"></textarea></label>
+              <label>Result<textarea name="result" rows="2"></textarea></label>
+              <label>Review date<input name="reviewDate" type="date"></label>
+              <button class="primary-btn" type="submit">Save Decision</button>
+            </form>
+          </div>
+          <div class="decision-memory-list">
+            <p>${escapeHtml(brief.decisionMemory.similarDecisionNote)}</p>
+            ${decisions.map(decision => `<small>${escapeHtml(decision.date)} · ${escapeHtml(decision.title)} · review ${escapeHtml(decision.reviewDate || "later")}</small>`).join("")}
+          </div>
+        </article>
+      </div>
+    `;
   }
 
   function renderProgressDebug() {
@@ -1481,6 +1646,45 @@
     });
 
     document.addEventListener("submit", event => {
+      if (event.target.id === "executiveReflectionForm") {
+        event.preventDefault();
+        const form = new FormData(event.target);
+        state.executive.reflections ||= {};
+        state.executive.reflections[Engine.dateKey()] = {
+          date: Engine.dateKey(),
+          wentWell: form.get("wentWell") || "",
+          improve: form.get("improve") || "",
+          learned: form.get("learned") || "",
+          updatedAt: new Date().toISOString()
+        };
+        const today = Engine.dayState(state);
+        today.review = [
+          state.executive.reflections[Engine.dateKey()].wentWell,
+          state.executive.reflections[Engine.dateKey()].improve,
+          state.executive.reflections[Engine.dateKey()].learned
+        ].filter(Boolean).join("\n");
+        if (!today.tasks.night) Engine.toggleTask(state, "night");
+        saveAndRender();
+        return;
+      }
+
+      if (event.target.id === "decisionMemoryForm") {
+        event.preventDefault();
+        const form = new FormData(event.target);
+        state.executive.decisions ||= [];
+        state.executive.decisions.push({
+          id: `decision-${Date.now()}`,
+          date: Engine.dateKey(),
+          title: form.get("title") || "Major decision",
+          reason: form.get("reason") || "",
+          result: form.get("result") || "",
+          reviewDate: form.get("reviewDate") || "",
+          createdAt: new Date().toISOString()
+        });
+        saveAndRender();
+        return;
+      }
+
       if (event.target.id !== "manualSleepLogForm") return;
       event.preventDefault();
       const log = Sleep.buildLogFromForm(event.target);
@@ -1514,6 +1718,7 @@
     applyStaticTranslations();
     renderTime();
     renderTopCommand();
+    renderExecutiveBrief();
     renderNowNext();
     renderSchedule();
     renderSleepForm();

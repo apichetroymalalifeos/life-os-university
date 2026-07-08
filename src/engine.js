@@ -494,6 +494,325 @@
     return { complete, total, percent: total ? Math.round((complete / total) * 100) : 0 };
   }
 
+  function latestSleepLog(state) {
+    const logs = Array.isArray(state.sleepLogs) ? state.sleepLogs : [];
+    return logs
+      .filter(log => log?.date)
+      .slice()
+      .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+      .at(-1) || null;
+  }
+
+  function sleepScoreForExecutive(state) {
+    const latest = latestSleepLog(state);
+    if (latest?.sleep_score) return Math.max(0, Math.min(100, Number(latest.sleep_score)));
+    const recovery = recoveryScore(state);
+    return recovery === null ? 60 : Math.round(recovery * 10);
+  }
+
+  function executiveScoreTrend(state, date = new Date()) {
+    const scores = state.executive?.scores || {};
+    const keyToday = dateKey(date);
+    const scoreOn = days => {
+      const values = [];
+      for (let offset = 0; offset < days; offset++) {
+        const d = new Date(date);
+        d.setDate(date.getDate() - offset);
+        const item = scores[dateKey(d)];
+        if (item?.score !== undefined) values.push(Number(item.score));
+      }
+      const average = values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length) : Number(scores[keyToday]?.score || 0);
+      return { days, average, count: values.length };
+    };
+    const trend7 = scoreOn(7);
+    const trend30 = scoreOn(30);
+    const trend90 = scoreOn(90);
+    return { seven: trend7, thirty: trend30, ninety: trend90 };
+  }
+
+  function priorityWeight(status) {
+    return {
+      "meeting today": 100,
+      "follow-up required": 85,
+      "waiting quotation": 75,
+      "waiting payment": 70,
+      "research": 45
+    }[String(status || "").toLowerCase()] || 50;
+  }
+
+  function salesPipelineForExecutive(state, today) {
+    const pipeline = Array.isArray(state.executive?.salesPipeline) && state.executive.salesPipeline.length
+      ? state.executive.salesPipeline
+      : [];
+    const current = today.customer ? {
+      name: today.customer.name,
+      status: "meeting today",
+      priority: "high",
+      preparationStatus: "route and sample objective ready",
+      followUpRequired: true
+    } : null;
+    const merged = current
+      ? [current, ...pipeline.filter(customer => customer.name !== current.name)]
+      : pipeline.slice();
+    const ranked = merged
+      .map(customer => ({
+        ...customer,
+        priorityScore: priorityWeight(customer.status) + (customer.priority === "high" ? 12 : customer.priority === "medium" ? 6 : 0) + (customer.followUpRequired ? 8 : 0)
+      }))
+      .sort((a, b) => b.priorityScore - a.priorityScore);
+    return ranked.slice(0, 4);
+  }
+
+  function buildDecisionRadar(state, briefParts, date = new Date()) {
+    const today = dayState(state, date);
+    const latest = latestSleepLog(state);
+    const recovery = recoveryStatus(state);
+    const warnings = [];
+    const add = (level, title, why, dataUsed, confidence = "Medium") => warnings.push({ level, title, why, dataUsed, confidence });
+
+    if (latest && Number(latest.total_sleep_minutes) < Number(latest.target_sleep_minutes || 450)) {
+      const diff = Number(latest.target_sleep_minutes || 450) - Number(latest.total_sleep_minutes);
+      add(diff > 90 ? "orange" : "yellow", "Missed Sleep", `นอนขาดเป้าหมาย ${Math.max(0, diff)} นาที จึงควรลด load ที่ไม่จำเป็น`, ["Sleep"], "High");
+    }
+    if (recovery.level === "poor") add("orange", "Low Recovery", "Recovery ต่ำ ระบบจึงไม่แนะนำ hard training", ["Sleep", "Recovery"], "High");
+    if (today.skips && Object.keys(today.skips).length) add("yellow", "Skipped Learning", "มีบทเรียนที่ถูกข้าม ควรรักษา currentDay เดิมและเรียนซ้ำเมื่อพร้อม", ["Learning Progress"], "High");
+    if (!today.tasks?.workout) add("yellow", "No Exercise Yet", "ยังไม่ mark workout วันนี้ ให้เลือก movement ที่เข้ากับ recovery", ["Workout History", "Tasks"], "Medium");
+    if (!today.tasks?.university) add("yellow", "Learning Not Closed", "ยังไม่ปิด learning loop วันนี้ บทเรียนสั้น 20–25 นาทีพอ", ["Learning Progress"], "Medium");
+    add("yellow", "Overloaded Field Window", "ช่วง 10:00–16:00 เป็น customer visit/driving block ยาว ต้องลดงานอ่านและพิมพ์ระหว่างทาง", ["Schedule"], "High");
+    if (latest?.habits?.work_stress_after_21) add("orange", "High Stress After 21:00", "มี stress/work หลัง 21:00 ใน sleep log ล่าสุด อาจกระทบ REM และ consistency", ["Sleep Habits"], "Medium");
+
+    return warnings.slice(0, 5);
+  }
+
+  function buildOpportunityRadar(state, roadmaps, date = new Date()) {
+    const today = ensureToday(state, roadmaps, date);
+    const plan = today.dailyFocus || dailyFocusPlan(date);
+    const focusLesson = lessonForToday(state, roadmaps, plan.focus, date);
+    const opportunities = [
+      {
+        title: `Finish ${FACULTY_LABELS[plan.focus]} Day ${focusLesson.day}`,
+        benefit: "สะสม compound skill และทำให้ roadmap เดินต่อพรุ่งนี้",
+        why: "บทเรียน focus คือ leverage สูงสุดของ learning system วันนี้",
+        dataUsed: ["Learning Progress", "Roadmap Metadata"],
+        confidence: "High"
+      },
+      {
+        title: "Follow-up top customer",
+        benefit: "เพิ่มโอกาสปิด next step โดยใช้เวลาน้อยกว่า prospect ใหม่",
+        why: "ลูกค้าที่มี meeting/follow-up วันนี้มี priority สูงกว่า backlog ทั่วไป",
+        dataUsed: ["Sales Pipeline", "Today Customer"],
+        confidence: "Medium"
+      },
+      {
+        title: "Walk after lunch",
+        benefit: "ช่วย glucose control, stress และพลังช่วงบ่าย",
+        why: "ตารางมี 13:00 walk block อยู่แล้วและไม่กระทบงานขาย",
+        dataUsed: ["Schedule", "Health Goal"],
+        confidence: "High"
+      },
+      {
+        title: "Sleep 10–15 minutes earlier",
+        benefit: "ลด sleep debt โดยไม่ทำให้ circadian rhythm แกว่ง",
+        why: "เป้าหมายหลักคือ consistency 22:00–05:30",
+        dataUsed: ["Sleep", "Recovery"],
+        confidence: "High"
+      },
+      {
+        title: "Update CRM after parking",
+        benefit: "ลดการลืม pain point และทำให้ follow-up ชัดขึ้น",
+        why: "วันนี้มี field sales driving block จึงต้องบันทึกหลังจอดเท่านั้น",
+        dataUsed: ["Schedule", "Sales Notes"],
+        confidence: "Medium"
+      },
+      {
+        title: "Review crypto thesis, not buy/sell",
+        benefit: "เพิ่มคุณภาพการตัดสินใจระยะยาวโดยไม่เพิ่ม impulsive risk",
+        why: "Finance engine ทำหน้าที่เตือนให้ review เท่านั้น ไม่สั่งซื้อขาย",
+        dataUsed: ["Finance Settings", "Roadmap Metadata"],
+        confidence: "Medium"
+      }
+    ];
+    return opportunities.slice(0, 4);
+  }
+
+  function buildExecutivePriorities(parts) {
+    const priorities = [];
+    if (parts.health.recommendation.includes("Recovery") || parts.health.recommendation.includes("Mobility") || parts.health.recommendation.includes("Rest")) {
+      priorities.push({
+        title: parts.health.recommendation,
+        why: parts.health.why,
+        expectedImpact: "ปกป้องพลังงาน งาน AE และการฟื้นตัวระยะยาว",
+        estimatedTime: parts.health.estimatedTime || "15–30 min"
+      });
+    }
+    priorities.push({
+      title: `Sales: ${parts.sales.topCustomer.name}`,
+      why: parts.sales.why,
+      expectedImpact: "เพิ่มความชัดเจนของ next step และลดงานค้าง",
+      estimatedTime: "10–20 min prep/follow-up"
+    });
+    priorities.push({
+      title: `Learn: ${parts.learning.focusFacultyName}`,
+      why: parts.learning.why,
+      expectedImpact: "เดินหน้า skill ที่สำคัญที่สุดของวันนี้",
+      estimatedTime: `${parts.learning.estimatedMinutes} min`
+    });
+    priorities.push({
+      title: "Family mission",
+      why: parts.family.why,
+      expectedImpact: "รักษาคุณภาพครอบครัวและลด stress load ตอนเย็น",
+      estimatedTime: "15–20 min quality time"
+    });
+    return priorities.slice(0, 3);
+  }
+
+  function buildExecutiveBrief(state, roadmaps, date = new Date()) {
+    const today = ensureToday(state, roadmaps, date);
+    state.executive ||= { scores: {}, reflections: {}, decisions: [], finance: {}, salesPipeline: [] };
+    state.executive.scores ||= {};
+    state.executive.reflections ||= {};
+    state.executive.decisions ||= [];
+
+    const daily = dailyScore(state, date);
+    const recovery = recoveryStatus(state);
+    const sleepScore = sleepScoreForExecutive(state);
+    const latest = latestSleepLog(state);
+    const plan = today.dailyFocus || dailyFocusPlan(date);
+    const cards = facultyCardsForToday(state, roadmaps, date);
+    const focusCard = cards.find(card => card.faculty === plan.focus) || cards[0];
+    const reviews = plan.reviews.map(faculty => cards.find(card => card.faculty === faculty)).filter(Boolean);
+    const workoutDone = Boolean(dayState(state, date).tasks.workout);
+    const learningDone = Boolean(dayState(state, date).tasks.university || dayState(state, date).tasks[plan.focus]);
+    const salesDone = Boolean(dayState(state, date).tasks.sales || dayState(state, date).tasks.elite_b2b_sales);
+    const familyDone = Boolean(dayState(state, date).tasks.family);
+    const reflectionDone = Boolean(dayState(state, date).tasks.night || dayState(state, date).review);
+    const recoveryPercent = recovery.score === null ? 60 : Math.round(recovery.score * 10);
+    const score = Math.round(
+      sleepScore * 0.20 +
+      recoveryPercent * 0.15 +
+      (learningDone ? 100 : 45) * 0.15 +
+      daily.percent * 0.15 +
+      (workoutDone ? 100 : 55) * 0.10 +
+      (familyDone ? 100 : 65) * 0.10 +
+      (salesDone ? 100 : 60) * 0.10 +
+      (reflectionDone ? 100 : 45) * 0.05
+    );
+
+    state.executive.scores[dateKey(date)] = {
+      date: dateKey(date),
+      score,
+      sleepScore,
+      recoveryScore: recoveryPercent,
+      dailyProgress: daily.percent,
+      updatedAt: new Date().toISOString()
+    };
+
+    const salesCustomers = salesPipelineForExecutive(state, today);
+    const topCustomer = salesCustomers[0] || { name: "Today customer", status: "meeting today", preparationStatus: "review objective", priority: "high" };
+    const finance = {
+      portfolioGoal: state.executive.finance?.portfolioGoal || "10 Million Goal",
+      targetAmount: Number(state.executive.finance?.targetAmount || 10000000),
+      monthlyDcaTarget: Number(state.executive.finance?.monthlyDcaTarget || 0),
+      monthlyDcaProgress: Number(state.executive.finance?.monthlyDcaProgress || 0),
+      riskLevel: state.executive.finance?.riskLevel || "medium"
+    };
+    const dcaPercent = finance.monthlyDcaTarget ? Math.min(100, Math.round((finance.monthlyDcaProgress / finance.monthlyDcaTarget) * 100)) : 0;
+    const financeRecommendation = finance.riskLevel === "high"
+      ? "Review risk before adding exposure"
+      : dcaPercent >= 100
+        ? "Review portfolio allocation"
+        : "Continue DCA review plan";
+
+    const healthRecommendation = recovery.level === "poor"
+      ? "Recovery / Rest"
+      : recovery.level === "medium"
+        ? "Zone2 + Mobility"
+        : recovery.level === "high"
+          ? "Strength"
+          : "Mobility";
+
+    const parts = {
+      health: {
+        recommendation: healthRecommendation,
+        workout: today.workout,
+        why: latest
+          ? `Sleep score ${sleepScore}/100, recovery ${recovery.label}, latest sleep ${Math.round(Number(latest.total_sleep_minutes || 0) / 60 * 10) / 10}h.`
+          : `No detailed sleep log today; using manual recovery inputs and conservative workout rule.`,
+        confidence: latest ? "High" : "Medium",
+        dataUsed: latest ? ["Sleep", "Recovery", "Workout History"] : ["Recovery", "Workout History"],
+        estimatedTime: today.workout?.duration || "20–30 min"
+      },
+      learning: {
+        focusFaculty: plan.focus,
+        focusFacultyName: FACULTY_LABELS[plan.focus],
+        reviewFaculties: plan.reviews,
+        reviewFacultyNames: plan.reviews.map(faculty => FACULTY_LABELS[faculty]),
+        lessonTitle: focusCard?.lesson?.title || "",
+        currentDay: focusCard?.day || progressFor(state, plan.focus).day,
+        estimatedMinutes: Number(today.availableMinutes || 25),
+        why: `Rotation selected ${FACULTY_LABELS[plan.focus]} as focus; progress is Day ${focusCard?.day || 1}. Reviews keep two related faculties active without overloading the morning.`,
+        confidence: "High",
+        dataUsed: ["Learning Progress", "Roadmap Metadata", "Daily Focus"]
+      },
+      sales: {
+        customers: salesCustomers,
+        topCustomer,
+        why: `${topCustomer.status} + ${topCustomer.priority || "medium"} priority creates the highest next-step leverage today.`,
+        confidence: "Medium",
+        dataUsed: ["Sales Pipeline", "Today Customer", "Meeting Notes"]
+      },
+      family: {
+        morningMission: "School drop-off 06:00–06:45",
+        eveningMission: "Pick up son / 15–20 minutes quality time",
+        recommendation: "No screen while driving; protect calm transition and present evening time.",
+        why: "Family routine is fixed and protects stress control, safety, and long-term consistency.",
+        confidence: "High",
+        dataUsed: ["Schedule", "Family Routine"]
+      },
+      finance: {
+        ...finance,
+        monthlyDcaPercent: dcaPercent,
+        recommendation: financeRecommendation,
+        why: "Life OS tracks review discipline only. It never tells you to buy or sell; it flags whether DCA/risk needs review.",
+        confidence: "Medium",
+        dataUsed: ["Finance Settings", "Risk Level"]
+      }
+    };
+
+    const radar = buildDecisionRadar(state, parts, date);
+    const opportunities = buildOpportunityRadar(state, roadmaps, date);
+    const priorities = buildExecutivePriorities(parts);
+    const trend = executiveScoreTrend(state, date);
+    const similarDecision = state.executive.decisions
+      .slice()
+      .reverse()
+      .find(decision => decision.reason || decision.result);
+
+    return {
+      title: "Morning Executive Brief",
+      greeting: "Good Morning",
+      score,
+      trend,
+      parts,
+      priorities,
+      radar,
+      opportunities,
+      reflectionQuestions: [
+        "What went well?",
+        "What should improve?",
+        "What did you learn?"
+      ],
+      decisionMemory: {
+        latest: state.executive.decisions.slice(-3).reverse(),
+        similarDecisionNote: similarDecision ? `Last decision memory: ${similarDecision.title || "Untitled"} — review ${similarDecision.reviewDate || "later"}` : "No major decision memory yet."
+      },
+      explainability: {
+        confidence: radar.some(item => item.level === "orange" || item.level === "red") ? "Medium" : "High",
+        dataUsed: ["Sleep", "Recovery", "Learning Progress", "Tasks", "Workout History", "Family Routine", "Sales Pipeline", "Finance Settings", "Reflection"]
+      }
+    };
+  }
+
   function completionPercent(state) {
     const totalCompleted = TRACKS.reduce((sum, key) => sum + progressFor(state, key).completed, 0);
     return Math.round((totalCompleted / (365 * TRACKS.length)) * 100);
@@ -648,6 +967,7 @@
     completeTrack,
     skipTrack,
     repairProgress,
+    buildExecutiveBrief,
     toggleTask,
     dailyScore,
     weeklyScore,

@@ -13,7 +13,7 @@
   };
 
   const defaultState = {
-    version: "6.1",
+    version: "7.0",
     generatedDate: null,
     sleep: { hours: "", deep: "", rem: "", wakes: "" },
     sleepLogs: [],
@@ -36,6 +36,24 @@
     },
     days: {},
     notes: {},
+    executive: {
+      scores: {},
+      reflections: {},
+      decisions: [],
+      finance: {
+        portfolioGoal: "10 Million Goal",
+        targetAmount: 10000000,
+        monthlyDcaTarget: 10000,
+        monthlyDcaProgress: 0,
+        riskLevel: "medium"
+      },
+      salesPipeline: [
+        { name: "Hospitality project buyer", status: "meeting today", priority: "high", preparationStatus: "sample kit ready", followUpRequired: true },
+        { name: "Interior designer / architect", status: "waiting quotation", priority: "high", preparationStatus: "spec notes ready", followUpRequired: true },
+        { name: "Marine refit account", status: "follow-up required", priority: "medium", preparationStatus: "technical notes pending", followUpRequired: true },
+        { name: "Aviation upholstery lead", status: "waiting payment", priority: "medium", preparationStatus: "documents ready", followUpRequired: false }
+      ]
+    },
     settings: { workoutOverride: "auto", language: "en", notificationsEnabled: false, sleepFormOpen: false, progressSchemaVersion: 2 },
     streaks: { current: 0, longest: 0, lastFullCompleteDate: null }
   };
@@ -90,6 +108,14 @@
     });
     state.days = state.days || {};
     state.notes = state.notes || {};
+    state.executive = Object.assign(clone(defaultState.executive), state.executive || {});
+    state.executive.scores ||= {};
+    state.executive.reflections ||= {};
+    state.executive.decisions = Array.isArray(state.executive.decisions) ? state.executive.decisions : [];
+    state.executive.finance = Object.assign(clone(defaultState.executive.finance), state.executive.finance || {});
+    state.executive.salesPipeline = Array.isArray(state.executive.salesPipeline) && state.executive.salesPipeline.length
+      ? state.executive.salesPipeline
+      : clone(defaultState.executive.salesPipeline);
     state.university = Object.assign(clone(defaultState.university), state.university || {});
     state.university.weakAreas ||= [];
     state.university.strongAreas ||= [];
@@ -99,7 +125,7 @@
     state.university.currentFaculty = LEGACY_FACULTY_MAP[state.university.currentFaculty] || state.university.currentFaculty || "ai_automation";
     state.settings = Object.assign(clone(defaultState.settings), state.settings || {});
     state.streaks = Object.assign(clone(defaultState.streaks), state.streaks || {});
-    state.version = "6.1";
+    state.version = "7.0";
     return state;
   }
 
