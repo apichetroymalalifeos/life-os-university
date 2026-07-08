@@ -691,11 +691,39 @@ textarea {
   background: rgba(15, 22, 19, .92);
 }
 
+.brief-mode-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 15px;
+  border-bottom: 1px solid var(--line);
+}
+
+.brief-mode-bar div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.brief-mode-bar b {
+  font-size: 14px;
+}
+
+.brief-mode-bar span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .executive-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
   padding: 15px;
+}
+
+.executive-grid.quick .quick-hidden {
+  display: none;
 }
 
 .executive-card {
@@ -779,6 +807,30 @@ textarea {
   border-top: 1px solid var(--line);
 }
 
+.explain-more {
+  border-top: 1px solid var(--line);
+  padding-top: 7px;
+}
+
+.explain-more summary {
+  width: fit-content;
+  min-height: 32px;
+  display: grid;
+  align-items: center;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--green);
+  background: rgba(124, 227, 139, .08);
+  font-size: 12px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.explain-more p {
+  margin-top: 8px;
+}
+
 .explain-meta span,
 .compact-list small,
 .priority-item small,
@@ -792,9 +844,50 @@ textarea {
 .compact-list,
 .priority-stack,
 .radar-list,
-.decision-memory-list {
+.decision-memory-list,
+.quality-grid,
+.qa-check-grid {
   display: grid;
   gap: 8px;
+}
+
+.quality-row,
+.qa-check-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, .03);
+}
+
+.quality-row span {
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.quality-row.real span {
+  color: var(--green);
+  background: var(--green-soft);
+}
+
+.quality-row.manual span {
+  color: var(--amber);
+  background: var(--amber-soft);
+}
+
+.quality-row.missing span {
+  color: var(--red);
+  background: var(--red-soft);
+}
+
+.thai-warning {
+  color: var(--amber) !important;
 }
 
 .priority-item,
@@ -833,6 +926,24 @@ textarea {
 .decision-form {
   display: grid;
   gap: 8px;
+}
+
+.qa-check-row {
+  justify-content: flex-start;
+  color: var(--soft);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.qa-check-row input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--green);
+}
+
+.qa-check-row.done {
+  border-color: rgba(124, 227, 139, .32);
+  background: var(--green-soft);
 }
 
 .sleep-card-grid,
@@ -1507,6 +1618,8 @@ textarea {
     .debug-grid,
     .executive-grid,
     .memory-grid,
+    .quality-grid,
+    .qa-check-grid,
     .today-learning-summary,
     .checklist,
     .stat-strip,
@@ -1516,6 +1629,11 @@ textarea {
 
   .executive-card.wide {
     grid-column: 1;
+  }
+
+  .brief-mode-bar {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .executive-score strong {

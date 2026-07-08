@@ -563,12 +563,69 @@
     return ranked.slice(0, 4);
   }
 
+  function sourceStatus(value, allowedStatuses = ["Real", "Manual", "Missing"]) {
+    return allowedStatuses.includes(value) ? value : "Missing";
+  }
+
+  function executiveDataQuality(state, today) {
+    const latest = latestSleepLog(state);
+    const hasManualSleepInputs = Boolean(state.sleep && (state.sleep.hours || state.sleep.deep || state.sleep.rem || state.sleep.wakes));
+    const salesPipeline = Array.isArray(state.executive?.salesPipeline) ? state.executive.salesPipeline : [];
+    const finance = state.executive?.finance || {};
+    const hasFinanceData = Boolean(finance.portfolioGoal || finance.monthlyDcaTarget || finance.monthlyDcaProgress || finance.riskLevel);
+    const workoutHasData = Boolean(today.workout || hasManualSleepInputs || latest);
+    const sleepStatus = latest
+      ? (String(latest.source || "").includes("manual") ? "Manual" : "Real")
+      : hasManualSleepInputs
+        ? "Manual"
+        : "Missing";
+    const salesStatus = salesPipeline.length || today.customer ? "Manual" : "Missing";
+    const financeStatus = hasFinanceData ? "Manual" : "Missing";
+    const workoutStatus = workoutHasData ? "Manual" : "Missing";
+    const items = {
+      sleep: { label: "Sleep data", status: sourceStatus(sleepStatus), key: true },
+      sales: { label: "Sales data", status: sourceStatus(salesStatus), key: true },
+      finance: { label: "Finance data", status: sourceStatus(financeStatus, ["Manual", "Missing"]), key: true },
+      learning: { label: "Learning data", status: "Real", key: false },
+      workout: { label: "Workout data", status: sourceStatus(workoutStatus, ["Manual", "Missing"]), key: true }
+    };
+    const missing = Object.entries(items).filter(([, item]) => item.status === "Missing").map(([key, item]) => ({ key, label: item.label }));
+    const keyMissing = Object.entries(items).filter(([, item]) => item.key && item.status === "Missing").map(([key, item]) => ({ key, label: item.label }));
+    const confidence = keyMissing.length >= 2 ? "Low" : keyMissing.length === 1 ? "Medium" : "High";
+    return {
+      items,
+      missing,
+      keyMissing,
+      confidence,
+      summary: Object.values(items).map(item => `${item.label}: ${item.status}`).join(" · ")
+    };
+  }
+
+  function capConfidence(base, dataQuality, keys = []) {
+    const hasMissingKey = keys.some(key => dataQuality.items[key]?.status === "Missing");
+    if (dataQuality.confidence === "Low") return "Low";
+    if (hasMissingKey || dataQuality.confidence === "Medium") return base === "Low" ? "Low" : "Medium";
+    return base;
+  }
+
+  function dueDecisionReviews(state, date = new Date()) {
+    const todayKey = dateKey(date);
+    return (state.executive?.decisions || [])
+      .filter(decision => decision.reviewDate && decision.reviewDate <= todayKey)
+      .sort((a, b) => String(a.reviewDate).localeCompare(String(b.reviewDate)));
+  }
+
   function buildDecisionRadar(state, briefParts, date = new Date()) {
     const today = dayState(state, date);
     const latest = latestSleepLog(state);
     const recovery = recoveryStatus(state);
     const warnings = [];
+    const dataQuality = executiveDataQuality(state, today);
     const add = (level, title, why, dataUsed, confidence = "Medium") => warnings.push({ level, title, why, dataUsed, confidence });
+
+    dataQuality.keyMissing.forEach(item => {
+      add("orange", `${item.label} Missing`, `${item.label} ยังไม่ครบ จึงลด confidence ของ Executive Brief วันนี้`, ["Data Quality"], "High");
+    });
 
     if (latest && Number(latest.total_sleep_minutes) < Number(latest.target_sleep_minutes || 450)) {
       const diff = Number(latest.target_sleep_minutes || 450) - Number(latest.total_sleep_minutes);
@@ -625,7 +682,7 @@
         confidence: "Medium"
       },
       {
-        title: "Review crypto thesis, not buy/sell",
+        title: "Review crypto thesis without trading action",
         benefit: "เพิ่มคุณภาพการตัดสินใจระยะยาวโดยไม่เพิ่ม impulsive risk",
         why: "Finance engine ทำหน้าที่เตือนให้ review เท่านั้น ไม่สั่งซื้อขาย",
         dataUsed: ["Finance Settings", "Roadmap Metadata"],
@@ -687,6 +744,7 @@
     const familyDone = Boolean(dayState(state, date).tasks.family);
     const reflectionDone = Boolean(dayState(state, date).tasks.night || dayState(state, date).review);
     const recoveryPercent = recovery.score === null ? 60 : Math.round(recovery.score * 10);
+    const dataQuality = executiveDataQuality(state, today);
     const score = Math.round(
       sleepScore * 0.20 +
       recoveryPercent * 0.15 +
@@ -722,6 +780,10 @@
       : dcaPercent >= 100
         ? "Review portfolio allocation"
         : "Continue DCA review plan";
+    const financeFact = `Risk level ${finance.riskLevel}; monthly DCA progress ${dcaPercent}%; target ${finance.targetAmount}.`;
+    const financeAssumption = finance.monthlyDcaTarget
+      ? "Assumption: DCA target is a planning input typed by the user, not live broker data."
+      : "Assumption: monthly DCA target is missing, so review reminder is conservative.";
 
     const healthRecommendation = recovery.level === "poor"
       ? "Recovery / Rest"
@@ -738,7 +800,7 @@
         why: latest
           ? `Sleep score ${sleepScore}/100, recovery ${recovery.label}, latest sleep ${Math.round(Number(latest.total_sleep_minutes || 0) / 60 * 10) / 10}h.`
           : `No detailed sleep log today; using manual recovery inputs and conservative workout rule.`,
-        confidence: latest ? "High" : "Medium",
+        confidence: capConfidence(latest ? "High" : "Medium", dataQuality, ["sleep", "workout"]),
         dataUsed: latest ? ["Sleep", "Recovery", "Workout History"] : ["Recovery", "Workout History"],
         estimatedTime: today.workout?.duration || "20–30 min"
       },
@@ -751,14 +813,14 @@
         currentDay: focusCard?.day || progressFor(state, plan.focus).day,
         estimatedMinutes: Number(today.availableMinutes || 25),
         why: `Rotation selected ${FACULTY_LABELS[plan.focus]} as focus; progress is Day ${focusCard?.day || 1}. Reviews keep two related faculties active without overloading the morning.`,
-        confidence: "High",
+        confidence: capConfidence("High", dataQuality, ["learning"]),
         dataUsed: ["Learning Progress", "Roadmap Metadata", "Daily Focus"]
       },
       sales: {
         customers: salesCustomers,
         topCustomer,
         why: `${topCustomer.status} + ${topCustomer.priority || "medium"} priority creates the highest next-step leverage today.`,
-        confidence: "Medium",
+        confidence: capConfidence("Medium", dataQuality, ["sales"]),
         dataUsed: ["Sales Pipeline", "Today Customer", "Meeting Notes"]
       },
       family: {
@@ -766,15 +828,19 @@
         eveningMission: "Pick up son / 15–20 minutes quality time",
         recommendation: "No screen while driving; protect calm transition and present evening time.",
         why: "Family routine is fixed and protects stress control, safety, and long-term consistency.",
-        confidence: "High",
+        confidence: capConfidence("High", dataQuality, []),
         dataUsed: ["Schedule", "Family Routine"]
       },
       finance: {
         ...finance,
         monthlyDcaPercent: dcaPercent,
         recommendation: financeRecommendation,
+        reviewOnly: true,
+        fact: financeFact,
+        assumption: financeAssumption,
+        noteThai: "ไม่ใช่คำแนะนำทางการเงิน ระบบนี้เตือนให้ทบทวนเท่านั้น ไม่ได้บอกให้ซื้อหรือขาย",
         why: "Life OS tracks review discipline only. It never tells you to buy or sell; it flags whether DCA/risk needs review.",
-        confidence: "Medium",
+        confidence: capConfidence("Medium", dataQuality, ["finance"]),
         dataUsed: ["Finance Settings", "Risk Level"]
       }
     };
@@ -783,6 +849,7 @@
     const opportunities = buildOpportunityRadar(state, roadmaps, date);
     const priorities = buildExecutivePriorities(parts);
     const trend = executiveScoreTrend(state, date);
+    const dueReviews = dueDecisionReviews(state, date);
     const similarDecision = state.executive.decisions
       .slice()
       .reverse()
@@ -792,6 +859,8 @@
       title: "Morning Executive Brief",
       greeting: "Good Morning",
       score,
+      confidence: dataQuality.confidence,
+      dataQuality,
       trend,
       parts,
       priorities,
@@ -804,11 +873,13 @@
       ],
       decisionMemory: {
         latest: state.executive.decisions.slice(-3).reverse(),
+        dueReviews,
         similarDecisionNote: similarDecision ? `Last decision memory: ${similarDecision.title || "Untitled"} — review ${similarDecision.reviewDate || "later"}` : "No major decision memory yet."
       },
       explainability: {
-        confidence: radar.some(item => item.level === "orange" || item.level === "red") ? "Medium" : "High",
-        dataUsed: ["Sleep", "Recovery", "Learning Progress", "Tasks", "Workout History", "Family Routine", "Sales Pipeline", "Finance Settings", "Reflection"]
+        confidence: dataQuality.confidence === "Low" ? "Low" : radar.some(item => item.level === "orange" || item.level === "red") ? "Medium" : dataQuality.confidence,
+        dataUsed: ["Sleep", "Recovery", "Learning Progress", "Tasks", "Workout History", "Family Routine", "Sales Pipeline", "Finance Settings", "Reflection"],
+        missingData: dataQuality.missing.map(item => item.label)
       }
     };
   }

@@ -1,6 +1,6 @@
 {
-  "version": "7.0.0",
-  "build": "2026-07-08-002",
-  "updatedAt": "2026-07-08T22:10:00+07:00",
-  "notes": "Added Executive Decision Intelligence Engine with morning brief, priority radar, reflection, and decision memory"
+  "version": "7.1.0",
+  "build": "2026-07-08-003",
+  "updatedAt": "2026-07-08T22:45:00+07:00",
+  "notes": "Hardened Executive Intelligence for mobile QA, data quality, confidence, finance safety, quick mode, and decision review reminders"
 }

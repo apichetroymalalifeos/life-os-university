@@ -8,7 +8,7 @@
   const roadmaps = window.LIFE_OS_ROADMAPS;
   let state = Storage.load();
   let pwaStatusMessage = "";
-  const APP_VERSION = "7.0.0";
+  const APP_VERSION = "7.1.0";
   const LIFE_OS_CACHE_PREFIX = "life-os-university-pwa-";
   let pendingServiceWorker = null;
   let updateVersionInfo = null;
@@ -817,6 +817,16 @@
     `;
   }
 
+  function explainMore(item) {
+    return `
+      <details class="explain-more">
+        <summary>Explain More</summary>
+        <p><b>WHY:</b> ${escapeHtml(item.why || "Rule-based local analysis.")}</p>
+        ${executiveMeta(item)}
+      </details>
+    `;
+  }
+
   function radarTone(level) {
     return { yellow: "warn-yellow", orange: "warn-orange", red: "warn-red" }[level] || "warn-yellow";
   }
@@ -835,64 +845,81 @@
     const reflection = state.executive.reflections?.[Engine.dateKey()] || {};
     const decisions = brief.decisionMemory.latest || [];
     const scoreClass = brief.score >= 85 ? "good" : brief.score >= 70 ? "steady" : brief.score >= 55 ? "warn" : "risk";
+    const mode = state.settings.executiveBriefMode || "detailed";
+    const missingData = brief.explainability.missingData?.length ? brief.explainability.missingData.join(", ") : "None";
+    const risks = brief.radar.slice(0, mode === "quick" ? 2 : 3);
+    const nextAction = brief.priorities[0] || { title: "Generate Today", why: "No priority generated yet.", expectedImpact: "Clarify today.", estimatedTime: "2 min" };
 
     node.innerHTML = `
-      <div class="executive-grid">
+      <div class="brief-mode-bar">
+        <div>
+          <b>${mode === "quick" ? "Quick Mode · 30-second brief" : "3-Minute Executive Brief"}</b>
+          <span>Life OS recommends. You decide.</span>
+        </div>
+        <button class="soft-btn" id="toggleExecutiveBriefModeBtn" type="button">${mode === "quick" ? "Show 3-Minute Brief" : "Quick Mode"}</button>
+      </div>
+      <div class="executive-grid ${mode === "quick" ? "quick" : "detailed"}">
         <article class="executive-card executive-score ${scoreClass}">
           <span>Today's Executive Score</span>
           <strong>${brief.score}</strong>
-          <p>${brief.greeting}. Read this in 30 seconds, then decide.</p>
+          <p>Confidence: ${escapeHtml(brief.confidence)} · Missing data: ${escapeHtml(missingData)}</p>
           <div class="mini-trend">
             <b>7D ${brief.trend.seven.average || brief.score}</b>
             <b>30D ${brief.trend.thirty.average || brief.score}</b>
             <b>90D ${brief.trend.ninety.average || brief.score}</b>
           </div>
-          ${executiveMeta(brief.explainability)}
+          ${explainMore({ ...brief.explainability, why: "Score combines sleep, recovery, learning, tasks, workout, family, work, and reflection. Confidence is capped when key data is missing." })}
+        </article>
+
+        <article class="executive-card data-quality-card">
+          <span>Data Quality</span>
+          <div class="quality-grid">
+            ${Object.entries(brief.dataQuality.items).map(([key, item]) => `<div class="quality-row ${item.status.toLowerCase()}"><b>${escapeHtml(item.label)}</b><span>${escapeHtml(item.status)}</span></div>`).join("")}
+          </div>
+          <p>Score confidence: ${escapeHtml(brief.confidence)}</p>
         </article>
 
         <article class="executive-card">
-          <span>Health Intelligence</span>
+          <span>Sleep / Recovery Recommendation</span>
           <h3>${escapeHtml(parts.health.recommendation)}</h3>
           <p><b>Workout:</b> ${escapeHtml(parts.health.workout?.type || "")} · ${escapeHtml(parts.health.workout?.duration || "")}</p>
-          <p><b>WHY:</b> ${escapeHtml(parts.health.why)}</p>
-          ${executiveMeta(parts.health)}
+          ${explainMore(parts.health)}
         </article>
 
         <article class="executive-card">
-          <span>Learning Intelligence</span>
+          <span>Learning Plan Today</span>
           <h3>${escapeHtml(parts.learning.focusFacultyName)} · Day ${parts.learning.currentDay}</h3>
           <p>${escapeHtml(parts.learning.lessonTitle)}</p>
           <p><b>Review:</b> ${escapeHtml(parts.learning.reviewFacultyNames.join(" + "))}</p>
-          <p><b>WHY:</b> ${escapeHtml(parts.learning.why)}</p>
-          ${executiveMeta(parts.learning)}
+          ${explainMore(parts.learning)}
         </article>
 
         <article class="executive-card">
-          <span>Sales Intelligence</span>
+          <span>Work / Sales Priority</span>
           <h3>${escapeHtml(parts.sales.topCustomer.name)}</h3>
           <p><b>Status:</b> ${escapeHtml(parts.sales.topCustomer.status)} · ${escapeHtml(parts.sales.topCustomer.preparationStatus)}</p>
-          <p><b>WHY:</b> ${escapeHtml(parts.sales.why)}</p>
           <div class="compact-list">
             ${parts.sales.customers.slice(0, 3).map(customer => `<small>${escapeHtml(customer.name)} · ${escapeHtml(customer.status)}</small>`).join("")}
           </div>
-          ${executiveMeta(parts.sales)}
+          ${explainMore(parts.sales)}
         </article>
 
         <article class="executive-card">
-          <span>Family Intelligence</span>
+          <span>Family Mission</span>
           <h3>${escapeHtml(parts.family.morningMission)}</h3>
           <p>${escapeHtml(parts.family.eveningMission)}</p>
-          <p><b>WHY:</b> ${escapeHtml(parts.family.why)}</p>
-          ${executiveMeta(parts.family)}
+          ${explainMore(parts.family)}
         </article>
 
         <article class="executive-card">
-          <span>Finance Intelligence</span>
+          <span>Finance Review Reminder</span>
           <h3>${escapeHtml(parts.finance.portfolioGoal)}</h3>
-          <p>Target ${formatMoney(parts.finance.targetAmount)} · DCA ${parts.finance.monthlyDcaPercent}% · Risk ${escapeHtml(parts.finance.riskLevel)}</p>
-          <p><b>Recommend review:</b> ${escapeHtml(parts.finance.recommendation)}</p>
-          <p><b>WHY:</b> ${escapeHtml(parts.finance.why)}</p>
-          ${executiveMeta(parts.finance)}
+          <p>Risk level: ${escapeHtml(parts.finance.riskLevel)} · Review only</p>
+          <p>${escapeHtml(parts.finance.recommendation)}</p>
+          <p><b>Fact:</b> ${escapeHtml(parts.finance.fact)}</p>
+          <p><b>Assumption:</b> ${escapeHtml(parts.finance.assumption)}</p>
+          <p class="thai-warning">${escapeHtml(parts.finance.noteThai)}</p>
+          ${explainMore(parts.finance)}
         </article>
 
         <article class="executive-card wide">
@@ -901,41 +928,61 @@
             ${brief.priorities.map((priority, index) => `
               <div class="priority-item">
                 <b>${index + 1}. ${escapeHtml(priority.title)}</b>
-                <p><b>WHY:</b> ${escapeHtml(priority.why)}</p>
                 <small>Impact: ${escapeHtml(priority.expectedImpact)} · Time: ${escapeHtml(priority.estimatedTime)}</small>
+                ${explainMore({ why: priority.why, confidence: "Medium", dataUsed: ["Executive Brief"] })}
               </div>
             `).join("")}
           </div>
         </article>
 
         <article class="executive-card">
-          <span>Decision Radar</span>
+          <span>Main Risks Today</span>
           <div class="radar-list">
-            ${brief.radar.map(item => `
+            ${risks.map(item => `
               <div class="radar-item ${radarTone(item.level)}">
                 <b>${escapeHtml(item.level.toUpperCase())} · ${escapeHtml(item.title)}</b>
-                <p>${escapeHtml(item.why)}</p>
-                ${executiveMeta(item)}
+                ${explainMore(item)}
               </div>
             `).join("") || "<p>No major warning detected.</p>"}
           </div>
         </article>
 
-        <article class="executive-card">
+        <article class="executive-card ${mode === "quick" ? "quick-hidden" : ""}">
           <span>Opportunity Radar</span>
           <div class="radar-list">
-            ${brief.opportunities.map(item => `
+            ${brief.opportunities.slice(0, 3).map(item => `
               <div class="opportunity-item">
                 <b>${escapeHtml(item.title)}</b>
                 <p>${escapeHtml(item.benefit)}</p>
-                <small>WHY: ${escapeHtml(item.why)}</small>
-                ${executiveMeta(item)}
+                ${explainMore(item)}
               </div>
             `).join("")}
           </div>
         </article>
 
-        <article class="executive-card wide">
+        <article class="executive-card">
+          <span>Decision Review Reminder</span>
+          ${brief.decisionMemory.dueReviews.length ? `
+            <div class="radar-list">
+              ${brief.decisionMemory.dueReviews.slice(0, 3).map(decision => `
+                <div class="radar-item warn-orange">
+                  <b>${escapeHtml(decision.title || "Decision review")}</b>
+                  <p>Review date ${escapeHtml(decision.reviewDate)} is today or overdue.</p>
+                  <small>Reason: ${escapeHtml(decision.reason || "-")}</small>
+                </div>
+              `).join("")}
+            </div>
+          ` : `<p>No decision review due today.</p>`}
+        </article>
+
+        <article class="executive-card next-action-card">
+          <span>One Clear Next Action</span>
+          <h3>${escapeHtml(nextAction.title)}</h3>
+          <p>${escapeHtml(nextAction.expectedImpact)}</p>
+          <small>${escapeHtml(nextAction.estimatedTime)}</small>
+        </article>
+
+        <article class="executive-card wide ${mode === "quick" ? "quick-hidden" : ""}">
           <span>Reflection Engine + Decision Memory</span>
           <div class="memory-grid">
             <form class="reflection-form" id="executiveReflectionForm">
@@ -979,6 +1026,68 @@
       `;
     }).join("");
     node.innerHTML = `<div class="debug-grid">${rows}</div>`;
+  }
+
+  function renderMobileQaChecklist() {
+    const node = $("#mobileQaChecklist");
+    if (!node) return;
+    state.executive.mobileQa ||= {};
+    const items = [
+      ["iphone_safari", "iPhone Safari"],
+      ["iphone_pwa", "iPhone PWA Home Screen"],
+      ["github_pages", "GitHub Pages"],
+      ["offline_mode", "Offline mode"],
+      ["auto_update", "Auto Update"],
+      ["generate_today", "Generate Today"],
+      ["drive_lesson", "Drive Lesson"],
+      ["complete_button", "Complete button"],
+      ["morning_executive_brief", "Morning Executive Brief"]
+    ];
+    node.innerHTML = `
+      <div class="qa-check-grid">
+        ${items.map(([key, label]) => `
+          <label class="qa-check-row ${state.executive.mobileQa[key] ? "done" : ""}">
+            <input type="checkbox" data-mobile-qa="${key}" ${state.executive.mobileQa[key] ? "checked" : ""}>
+            <span>${label}</span>
+          </label>
+        `).join("")}
+      </div>
+      <p class="small-muted">เช็กบนมือถือจริงหลัง publish ทุกครั้ง โดยเฉพาะ PWA cache และปุ่ม Complete</p>
+    `;
+  }
+
+  function exportLocalStorageBackup() {
+    const backup = {};
+    for (let index = 0; index < localStorage.length; index++) {
+      const key = localStorage.key(index);
+      backup[key] = localStorage.getItem(key);
+    }
+    $("#backupBox").value = JSON.stringify({
+      exportedAt: new Date().toISOString(),
+      appVersion: APP_VERSION,
+      localStorage: backup
+    }, null, 2);
+    setStatus("#settingsActionStatus", "Export backup พร้อมแล้วในกล่อง Backup ด้านซ้าย", "good");
+  }
+
+  function resetDemoDataOnly() {
+    state.executive.finance = {
+      portfolioGoal: "10 Million Goal",
+      targetAmount: 10000000,
+      monthlyDcaTarget: 10000,
+      monthlyDcaProgress: 0,
+      riskLevel: "medium"
+    };
+    state.executive.salesPipeline = [
+      { name: "Hospitality project buyer", status: "meeting today", priority: "high", preparationStatus: "sample kit ready", followUpRequired: true },
+      { name: "Interior designer / architect", status: "waiting quotation", priority: "high", preparationStatus: "spec notes ready", followUpRequired: true },
+      { name: "Marine refit account", status: "follow-up required", priority: "medium", preparationStatus: "technical notes pending", followUpRequired: true },
+      { name: "Aviation upholstery lead", status: "waiting payment", priority: "medium", preparationStatus: "documents ready", followUpRequired: false }
+    ];
+    state.executive.mobileQa = {};
+    state.settings.executiveBriefMode = "detailed";
+    saveAndRender();
+    setStatus("#settingsActionStatus", "รีเซ็ต demo data แล้ว โดยไม่ลบ progress, sleep logs, notes หรือ decisions", "good");
   }
 
   function sleepLogs() {
@@ -1549,6 +1658,8 @@
     $("#updateNowBtn").addEventListener("click", updateNow);
     $("#updateLaterBtn").addEventListener("click", hideUpdateBanner);
     $("#forceFreshBtn")?.addEventListener("click", forceFreshReload);
+    $("#exportLocalStorageBtn")?.addEventListener("click", exportLocalStorageBackup);
+    $("#resetDemoDataBtn")?.addEventListener("click", resetDemoDataOnly);
 
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") checkForUpdates();
@@ -1571,6 +1682,13 @@
       const skip = event.target.closest("[data-skip]");
       const refresh = event.target.closest("[data-refresh]");
       const toggle = event.target.closest("[data-toggle-task]");
+      const modeToggle = event.target.closest("#toggleExecutiveBriefModeBtn");
+
+      if (modeToggle) {
+        state.settings.executiveBriefMode = state.settings.executiveBriefMode === "quick" ? "detailed" : "quick";
+        saveAndRender();
+        return;
+      }
 
       if (teach) {
         const today = Engine.ensureToday(state, roadmaps);
@@ -1703,6 +1821,14 @@
     });
 
     document.addEventListener("change", event => {
+      if (event.target.matches("[data-mobile-qa]")) {
+        state.executive.mobileQa ||= {};
+        state.executive.mobileQa[event.target.dataset.mobileQa] = event.target.checked;
+        Storage.save(state);
+        renderMobileQaChecklist();
+        return;
+      }
+
       if (event.target.id === "learningTimeSelect") {
         const today = Engine.ensureToday(state, roadmaps);
         today.availableMinutes = Number(event.target.value);
@@ -1732,6 +1858,7 @@
     renderPwaStatus();
     renderAppVersion();
     renderProgressDebug();
+    renderMobileQaChecklist();
     Storage.save(state);
   }
 

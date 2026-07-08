@@ -2,7 +2,7 @@
 // Static assets are cache-first for offline use. version.json is always fetched
 // network-first and is never permanently cached, so installed PWAs can detect
 // new GitHub Pages deploys.
-const APP_VERSION = "7.0.0";
+const APP_VERSION = "7.1.0";
 const CACHE_PREFIX = "life-os-university-pwa-";
 const CACHE_NAME = `${CACHE_PREFIX}${APP_VERSION}`;
 

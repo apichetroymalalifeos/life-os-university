@@ -13,7 +13,7 @@
   };
 
   const defaultState = {
-    version: "7.0",
+    version: "7.1",
     generatedDate: null,
     sleep: { hours: "", deep: "", rem: "", wakes: "" },
     sleepLogs: [],
@@ -52,9 +52,10 @@
         { name: "Interior designer / architect", status: "waiting quotation", priority: "high", preparationStatus: "spec notes ready", followUpRequired: true },
         { name: "Marine refit account", status: "follow-up required", priority: "medium", preparationStatus: "technical notes pending", followUpRequired: true },
         { name: "Aviation upholstery lead", status: "waiting payment", priority: "medium", preparationStatus: "documents ready", followUpRequired: false }
-      ]
+      ],
+      mobileQa: {}
     },
-    settings: { workoutOverride: "auto", language: "en", notificationsEnabled: false, sleepFormOpen: false, progressSchemaVersion: 2 },
+    settings: { workoutOverride: "auto", language: "en", notificationsEnabled: false, sleepFormOpen: false, executiveBriefMode: "detailed", progressSchemaVersion: 2 },
     streaks: { current: 0, longest: 0, lastFullCompleteDate: null }
   };
 
@@ -116,6 +117,7 @@
     state.executive.salesPipeline = Array.isArray(state.executive.salesPipeline) && state.executive.salesPipeline.length
       ? state.executive.salesPipeline
       : clone(defaultState.executive.salesPipeline);
+    state.executive.mobileQa = Object.assign(clone(defaultState.executive.mobileQa), state.executive.mobileQa || {});
     state.university = Object.assign(clone(defaultState.university), state.university || {});
     state.university.weakAreas ||= [];
     state.university.strongAreas ||= [];
@@ -125,7 +127,7 @@
     state.university.currentFaculty = LEGACY_FACULTY_MAP[state.university.currentFaculty] || state.university.currentFaculty || "ai_automation";
     state.settings = Object.assign(clone(defaultState.settings), state.settings || {});
     state.streaks = Object.assign(clone(defaultState.streaks), state.streaks || {});
-    state.version = "7.0";
+    state.version = "7.1";
     return state;
   }
 
