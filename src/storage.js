@@ -18,13 +18,13 @@
     sleep: { hours: "", deep: "", rem: "", wakes: "" },
     sleepLogs: [],
     progress: {
-      ai_automation: { day: 1, completed: 0, skipped: 0 },
-      crypto_macro: { day: 1, completed: 0, skipped: 0 },
-      longevity_health: { day: 1, completed: 0, skipped: 0 },
-      elite_b2b_sales: { day: 1, completed: 0, skipped: 0 },
-      psychology_decision: { day: 1, completed: 0, skipped: 0 },
-      future_trends: { day: 1, completed: 0, skipped: 0 },
-      workout: { day: 1, completed: 0, skipped: 0 }
+      ai_automation: createProgress(),
+      crypto_macro: createProgress(),
+      longevity_health: createProgress(),
+      elite_b2b_sales: createProgress(),
+      psychology_decision: createProgress(),
+      future_trends: createProgress(),
+      workout: createProgress()
     },
     university: {
       currentFaculty: "ai_automation",
@@ -36,9 +36,23 @@
     },
     days: {},
     notes: {},
-    settings: { workoutOverride: "auto", language: "en", notificationsEnabled: false, sleepFormOpen: false },
+    settings: { workoutOverride: "auto", language: "en", notificationsEnabled: false, sleepFormOpen: false, progressSchemaVersion: 2 },
     streaks: { current: 0, longest: 0, lastFullCompleteDate: null }
   };
+
+  function createProgress() {
+    return {
+      day: 1,
+      currentDay: 1,
+      completed: 0,
+      skipped: 0,
+      completedDays: [],
+      skippedDays: [],
+      lastCompletedDate: null,
+      streak: 0,
+      bestStreak: 0
+    };
+  }
 
   function clone(value) {
     return JSON.parse(JSON.stringify(value));
@@ -57,7 +71,7 @@
       }
     });
     Object.keys(defaultState.progress).forEach(key => {
-      state.progress[key] = Object.assign(clone(defaultState.progress[key]), state.progress[key] || {});
+      state.progress[key] = normalizeProgress(Object.assign(clone(defaultState.progress[key]), state.progress[key] || {}));
     });
     Object.values(state.days || {}).forEach(day => {
       if (!day.lessonRefs) return;
@@ -89,9 +103,32 @@
     return state;
   }
 
+  function normalizeProgress(progress) {
+    const currentDay = Number(progress.currentDay || progress.day || 1);
+    progress.currentDay = Math.max(1, Math.min(365, currentDay));
+    progress.day = progress.currentDay;
+    progress.completedDays = Array.isArray(progress.completedDays) ? progress.completedDays.map(Number).filter(Boolean) : [];
+    progress.skippedDays = Array.isArray(progress.skippedDays) ? progress.skippedDays.map(Number).filter(Boolean) : [];
+    progress.completed = Math.max(Number(progress.completed || 0), progress.completedDays.length);
+    progress.skipped = Math.max(Number(progress.skipped || 0), progress.skippedDays.length);
+    progress.lastCompletedDate ||= null;
+    progress.streak = Number(progress.streak || 0);
+    progress.bestStreak = Number(progress.bestStreak || 0);
+    while (progress.completedDays.includes(progress.currentDay) && progress.currentDay < 365) {
+      progress.currentDay += 1;
+      progress.day = progress.currentDay;
+    }
+    return progress;
+  }
+
   function load() {
     try {
-      return mergeDefaults(JSON.parse(localStorage.getItem(STATE_KEY)));
+      const parsed = JSON.parse(localStorage.getItem(STATE_KEY));
+      if (parsed && !parsed.progressBackupCreated) {
+        localStorage.setItem(`lifeOS_progress_backup_${Date.now()}`, JSON.stringify(parsed.progress || {}));
+        parsed.progressBackupCreated = true;
+      }
+      return mergeDefaults(parsed);
     } catch {
       return mergeDefaults();
     }

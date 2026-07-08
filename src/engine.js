@@ -169,8 +169,32 @@
 
   function progressFor(state, track) {
     const id = normalizeFacultyId(track);
-    state.progress[id] ||= { day: state.progress[track]?.day || 1, completed: state.progress[track]?.completed || 0, skipped: state.progress[track]?.skipped || 0 };
+    state.progress[id] = normalizeProgressState(state.progress[id] || state.progress[track] || {});
     return state.progress[id];
+  }
+
+  function normalizeProgressState(progress) {
+    const currentDay = Number(progress.currentDay || progress.day || 1);
+    progress.currentDay = Math.max(1, Math.min(365, currentDay));
+    progress.day = progress.currentDay;
+    progress.completedDays = Array.isArray(progress.completedDays) ? progress.completedDays.map(Number).filter(Boolean) : [];
+    progress.skippedDays = Array.isArray(progress.skippedDays) ? progress.skippedDays.map(Number).filter(Boolean) : [];
+    progress.completed = Math.max(Number(progress.completed || 0), progress.completedDays.length);
+    progress.skipped = Math.max(Number(progress.skipped || 0), progress.skippedDays.length);
+    progress.lastCompletedDate ||= null;
+    progress.streak = Number(progress.streak || 0);
+    progress.bestStreak = Number(progress.bestStreak || 0);
+    while (progress.completedDays.includes(progress.currentDay) && progress.currentDay < 365) {
+      progress.currentDay += 1;
+      progress.day = progress.currentDay;
+    }
+    return progress;
+  }
+
+  function nextIncompleteDay(progress) {
+    let day = Math.max(1, Number(progress.currentDay || progress.day || 1));
+    while (progress.completedDays?.includes(day) && day < 365) day += 1;
+    return day;
   }
 
   function roadmapError(track) {
@@ -391,8 +415,20 @@
       today.advanced ||= {};
       today.advanced[track] = true;
       const completedLessonDay = today.lessonRefs?.[track]?.day || progressFor(state, track).day;
-      progressFor(state, track).completed += 1;
-      progressFor(state, track).day = Math.min(365, completedLessonDay + 1);
+      const progress = progressFor(state, track);
+      if (!progress.completedDays.includes(completedLessonDay)) {
+        progress.completedDays.push(completedLessonDay);
+        progress.completedDays.sort((a, b) => a - b);
+      }
+      progress.completed = progress.completedDays.length;
+      progress.currentDay = Math.min(365, nextIncompleteDay({ ...progress, currentDay: completedLessonDay + 1 }));
+      progress.day = progress.currentDay;
+      const previousDate = progress.lastCompletedDate;
+      const yesterday = new Date(date);
+      yesterday.setDate(date.getDate() - 1);
+      progress.streak = previousDate === dateKey(yesterday) ? Number(progress.streak || 0) + 1 : 1;
+      progress.bestStreak = Math.max(Number(progress.bestStreak || 0), progress.streak);
+      progress.lastCompletedDate = dateKey(date);
       if (FACULTIES.includes(track)) {
         state.university.history.push({ date: dateKey(date), faculty: track, day: completedLessonDay, completed: true });
         if (today.dailyFocus?.focus === track) today.tasks.university = true;
@@ -406,8 +442,26 @@
     const today = dayState(state, date);
     today.skips[track] = true;
     today.tasks[track] = false;
-    if (TRACKS.includes(track)) progressFor(state, track).skipped += 1;
+    if (TRACKS.includes(track)) {
+      const progress = progressFor(state, track);
+      const skippedLessonDay = today.lessonRefs?.[track]?.day || progress.currentDay;
+      if (!progress.skippedDays.includes(skippedLessonDay)) progress.skippedDays.push(skippedLessonDay);
+      progress.skippedDays.sort((a, b) => a - b);
+      progress.skipped = progress.skippedDays.length;
+    }
     updateStreaks(state, date);
+  }
+
+  function repairProgress(state) {
+    TRACKS.forEach(track => {
+      const progress = progressFor(state, track);
+      progress.currentDay ||= progress.day || 1;
+      progress.currentDay = nextIncompleteDay(progress);
+      progress.day = progress.currentDay;
+      progress.completed = progress.completedDays.length;
+      progress.skipped = progress.skippedDays.length;
+    });
+    return state.progress;
   }
 
   function toggleTask(state, task, date = new Date()) {
@@ -480,6 +534,10 @@
     const quizScore = state.university.quizScores?.[faculty] ?? "not recorded";
     const minutes = Number(today.availableMinutes || 45);
     const timePlan = TIME_PLANS[minutes] || TIME_PLANS[25];
+    const previousCompletedDay = Math.max(0, ...(dayProgress.completedDays || []).filter(day => day < lesson.day));
+    const previousSummary = previousCompletedDay
+      ? `Day ${previousCompletedDay} completed on ${dayProgress.lastCompletedDate || "previous session"}. Continue from that roadmap position; Life OS stores progress metadata only, not lesson explanations.`
+      : "No previous completed day recorded for this faculty yet.";
 
     return [
       "คุณคือ ChatGPT ในบทบาทอาจารย์มหาวิทยาลัย เพื่อน ที่ปรึกษา และโค้ชส่วนตัวของฉัน",
@@ -487,6 +545,7 @@
       "สอนฉันเป็นภาษาไทย",
       "ใช้ความรู้ล่าสุดที่มี",
       "หากข้อมูลมีโอกาสเปลี่ยนแปลง เช่น AI, Crypto, ข่าวเทคโนโลยี, งานวิจัยสุขภาพ หรือข้อมูลตลาด ให้ค้นหาข้อมูลล่าสุดก่อนสอน",
+      "สอนบทเรียนวันนี้ต่อเนื่องจากเมื่อวาน แต่ไม่ใช้ข้อมูลเก่าที่ล้าสมัย หากเป็นเรื่อง AI, Crypto, Future Trends, งานวิจัยสุขภาพ หรือข้อมูลตลาด ให้ใช้ข้อมูลล่าสุดและค้นเว็บเมื่อจำเป็น",
       "ฉันกำลังฟังระหว่างเดินทางหรือขับรถ ใช้ภาษาง่าย เล่าเป็นเรื่อง และไม่ต้องให้ฉันดูกราฟหรืออ่านข้อความยาวระหว่างขับรถ",
       "วันนี้ช่วง 06:00–06:45 ฉันต้องขับรถไปส่งลูกชาย จึงต้องเป็นบทเรียนแบบฟังได้ ไม่ต้องดูจอ และใช้เวลาสั้นลงถ้าจำเป็น",
       "แยก fact, assumption, opinion ให้ชัดเจน",
@@ -503,6 +562,7 @@
       `- เวลาที่มี: ${minutes} นาที (${timePlan.label})`,
       `- Focus Faculty: ${FACULTY_ICONS[faculty]} ${FACULTY_LABELS[faculty]} (${faculty})`,
       `- Focus Lesson: Day ${lesson.day} - ${lesson.title}`,
+      `- Previous Completed Day Summary: ${previousSummary}`,
       `- Focus Category: ${lesson.category}`,
       `- Focus Learning Goal: ${lesson.learningGoal}`,
       `- Focus Keywords: ${(lesson.keywords || []).join(", ")}`,
@@ -587,6 +647,7 @@
     recoveryStatus,
     completeTrack,
     skipTrack,
+    repairProgress,
     toggleTask,
     dailyScore,
     weeklyScore,

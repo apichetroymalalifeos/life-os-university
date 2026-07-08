@@ -8,7 +8,7 @@
   const roadmaps = window.LIFE_OS_ROADMAPS;
   let state = Storage.load();
   let pwaStatusMessage = "";
-  const APP_VERSION = "6.4.1";
+  const APP_VERSION = "6.4.2";
   const LIFE_OS_CACHE_PREFIX = "life-os-university-pwa-";
   let pendingServiceWorker = null;
   let updateVersionInfo = null;
@@ -797,6 +797,25 @@
     $("#nightReviewText").value = today.review || "";
   }
 
+  function renderProgressDebug() {
+    const node = $("#progressDebug");
+    if (!node) return;
+    const rows = Engine.FACULTIES.map(faculty => {
+      const progress = Engine.progressFor(state, faculty);
+      return `
+        <div class="debug-row">
+          <b>${faculty}</b>
+          <span>currentDay: ${progress.currentDay || progress.day || 1}</span>
+          <span>completedDays: ${(progress.completedDays || []).join(", ") || "-"}</span>
+          <span>skippedDays: ${(progress.skippedDays || []).join(", ") || "-"}</span>
+          <span>lastCompletedDate: ${progress.lastCompletedDate || "-"}</span>
+          <span>streak: ${progress.streak || 0} / best ${progress.bestStreak || 0}</span>
+        </div>
+      `;
+    }).join("");
+    node.innerHTML = `<div class="debug-grid">${rows}</div>`;
+  }
+
   function sleepLogs() {
     state.sleepLogs ||= Sleep.clone(Sleep.SAMPLE_LOGS);
     return Sleep.sortedLogs(state.sleepLogs);
@@ -1062,6 +1081,7 @@
   }
 
   function generateTodayFlow() {
+    Engine.repairProgress?.(state);
     const today = Engine.generateToday(state, roadmaps);
     today.generateStatus = t("todayGenerated");
     today.teachPrompt = Engine.buildTeachMePrompt(state, roadmaps);
@@ -1287,6 +1307,15 @@
 
     $("#generateTodayBtn").addEventListener("click", generateTodayFlow);
     $("#mobileGenerateBtn").addEventListener("click", generateTodayFlow);
+    $("#refreshLessonDataBtn")?.addEventListener("click", () => {
+      Engine.repairProgress?.(state);
+      Engine.generateToday(state, roadmaps);
+      saveAndRender();
+    });
+    $("#repairProgressBtn")?.addEventListener("click", () => {
+      Engine.repairProgress?.(state);
+      saveAndRender();
+    });
     $("#toggleSleepLogForm")?.addEventListener("click", () => {
       state.settings.sleepFormOpen = !state.settings.sleepFormOpen;
       saveAndRender();
@@ -1497,6 +1526,7 @@
     renderNotificationStatus();
     renderPwaStatus();
     renderAppVersion();
+    renderProgressDebug();
     Storage.save(state);
   }
 

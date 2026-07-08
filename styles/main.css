@@ -859,6 +859,38 @@ textarea {
   font-size: 12px;
 }
 
+.progress-debug-card {
+  grid-column: 1 / -1;
+}
+
+.debug-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.debug-row {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, .03);
+  font-size: 12px;
+}
+
+.debug-row b {
+  color: var(--green);
+  overflow-wrap: anywhere;
+}
+
+.debug-row span {
+  color: var(--soft);
+  overflow-wrap: anywhere;
+}
+
 .lesson-card {
   min-height: 310px;
   display: flex;
@@ -1316,6 +1348,7 @@ textarea {
     .sleep-plan-list,
     .manual-sleep-form,
     .habit-checks,
+    .debug-grid,
     .today-learning-summary,
     .checklist,
     .stat-strip,
