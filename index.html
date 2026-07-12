@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Life OS">
-  <title>Life OS University 8.0</title>
+  <title>Life OS University 8.0.1</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23090d0c'/%3E%3Cpath d='M16 7l9 5v8l-9 5-9-5v-8l9-5z' fill='none' stroke='%237ce38b' stroke-width='2'/%3E%3Cpath d='M16 12v8M12 16h8' stroke='%237ce38b' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
@@ -44,7 +44,7 @@
           </svg>
         </div>
         <div>
-          <h1>LIFE OS 8.0</h1>
+          <h1>LIFE OS 8.0.1</h1>
           <span data-i18n="brandSubtitle">Local Executive Operating System</span>
         </div>
       </div>
@@ -155,6 +155,23 @@
           </div>
           <div class="stat"><span data-i18n="roadmapCompletion">Roadmap Completion</span><b id="completionPct">0%</b></div>
           <p class="small-muted"><span data-i18n="todaysSalesFocusPrefix">Today's sales focus:</span> <strong id="todayFocus">Generate today to define the objective.</strong></p>
+        </div>
+      </section>
+
+      <section class="browser-command-section" id="browserCommandSection">
+        <div class="panel browser-command-panel">
+          <div class="browser-command-copy">
+            <span class="eyebrow">Browser Quick Command</span>
+            <h3 id="browserCommandTitle">Open Life OS and act immediately</h3>
+            <p id="browserCommandDetail">Your next action appears here.</p>
+          </div>
+          <div class="browser-command-metrics" id="browserCommandMetrics"></div>
+          <div class="browser-command-actions">
+            <button class="primary-btn" data-browser-action="generate" type="button">Generate Today</button>
+            <button class="soft-btn" data-browser-action="teach" type="button">Teach Me</button>
+            <button class="soft-btn" data-browser-action="drive" type="button">Drive Lesson</button>
+            <button class="ghost-btn" data-browser-action="brief" type="button">Morning Brief</button>
+          </div>
         </div>
       </section>
 

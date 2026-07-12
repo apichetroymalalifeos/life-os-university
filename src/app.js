@@ -8,7 +8,7 @@
   const roadmaps = window.LIFE_OS_ROADMAPS;
   let state = Storage.load();
   let pwaStatusMessage = "";
-  const APP_VERSION = "8.0.0";
+  const APP_VERSION = "8.0.1";
   const LIFE_OS_CACHE_PREFIX = "life-os-university-pwa-";
   let pendingServiceWorker = null;
   let updateVersionInfo = null;
@@ -543,6 +543,31 @@
     $("#completionPct").textContent = `${Engine.completionPercent(state)}%`;
     $("#todayFocus").textContent = today.customer ? localCustomer(today.customer).closingObjective : t("generateToDefineSales");
     if ($("#mobileStatus")) $("#mobileStatus").textContent = `${Engine.modeLabel?.(mode) || t("todayStatus")} · ${daily.percent}%`;
+  }
+
+  function renderBrowserCommandCenter() {
+    if (!$("#browserCommandSection")) return;
+    const today = Engine.ensureToday(state, roadmaps);
+    const current = localBlock(Engine.getCurrentBlock(new Date(), state));
+    const next = localBlock(Engine.getNextBlock(new Date(), state));
+    const daily = Engine.dailyScore(state);
+    const mode = Engine.modeForDate?.(state) || "production";
+    const focus = today.dailyFocus?.focus || today.currentFaculty || state.university.currentFaculty;
+    const lesson = Engine.lessonForToday(state, roadmaps, focus);
+
+    $("#browserCommandTitle").textContent = current.title;
+    $("#browserCommandDetail").textContent = current.mission;
+    $("#browserCommandMetrics").innerHTML = [
+      ["Mode", Engine.modeLabel?.(mode) || mode],
+      ["Next", `${next.start} ${next.title}`],
+      ["Learning", `Day ${lesson.day} · ${facultyLabel(focus)}`],
+      ["Progress", `${daily.percent}% today`]
+    ].map(([label, value]) => `
+      <div class="browser-mini-metric">
+        <span>${escapeHtml(label)}</span>
+        <b>${escapeHtml(value)}</b>
+      </div>
+    `).join("");
   }
 
   function greetingForHour(hour) {
@@ -1907,7 +1932,36 @@
       const toggle = event.target.closest("[data-toggle-task]");
       const modeToggle = event.target.closest("#toggleExecutiveBriefModeBtn");
       const weekendAction = event.target.closest("[data-weekend-action]");
+      const browserAction = event.target.closest("[data-browser-action]");
       const resetWeekend = event.target.closest("#resetWeekendDefaultsBtn");
+
+      if (browserAction) {
+        const action = browserAction.dataset.browserAction;
+        if (action === "generate") {
+          generateTodayFlow();
+          return;
+        }
+        if (action === "brief") {
+          $("#morningBriefBtn")?.click();
+          $("#executiveSection")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          return;
+        }
+        if (action === "teach" || action === "drive") {
+          const today = Engine.ensureToday(state, roadmaps);
+          const prompt = action === "drive"
+            ? Engine.buildDriveLessonPrompt(state, roadmaps)
+            : Engine.buildTeachMePrompt(state, roadmaps);
+          today.teachPrompt = prompt;
+          const copied = await copyTeachPrompt(prompt);
+          today.teachStatus = copied
+            ? (action === "drive" ? t("drivePromptCopied") : t("promptCopied"))
+            : t("promptCopyFailed");
+          Storage.save(state);
+          renderAll();
+          $("#teachMeCard")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          return;
+        }
+      }
 
       if (modeToggle) {
         state.settings.executiveBriefMode = state.settings.executiveBriefMode === "quick" ? "detailed" : "quick";
@@ -2177,6 +2231,7 @@
     applyStaticTranslations();
     renderTime();
     renderTopCommand();
+    renderBrowserCommandCenter();
     renderExecutiveBrief();
     renderWeekendDashboard();
     renderNowNext();
@@ -2205,6 +2260,7 @@
   setInterval(() => {
     renderTime();
     renderTopCommand();
+    renderBrowserCommandCenter();
     renderNowNext();
     renderSchedule();
   }, 60000);

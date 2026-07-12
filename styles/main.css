@@ -459,8 +459,80 @@ textarea {
 
 .mission-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 10px;
+}
+
+.browser-command-section {
+  margin-bottom: 14px;
+}
+
+.browser-command-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(240px, .7fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px;
+  border-color: rgba(124, 227, 139, .24);
+  background:
+    linear-gradient(135deg, rgba(124, 227, 139, .08), rgba(127, 179, 255, .045)),
+    rgba(18, 26, 23, .92);
+}
+
+.browser-command-copy h3 {
+  margin: 4px 0 6px;
+  font-size: 20px;
+  line-height: 1.15;
+}
+
+.browser-command-copy p {
+  margin: 0;
+  color: var(--soft);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.browser-command-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.browser-mini-metric {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 9px;
+  background: rgba(255, 255, 255, .035);
+}
+
+.browser-mini-metric span {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.browser-mini-metric b {
+  display: block;
+  overflow: hidden;
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.browser-command-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(128px, 1fr));
+  gap: 8px;
+}
+
+.browser-command-actions button {
+  min-height: 42px;
 }
 
 .metric {
@@ -1646,8 +1718,13 @@ textarea {
 @media (max-width: 1180px) {
   .app,
   .top-shell,
+  .browser-command-panel,
   .grid {
     grid-template-columns: 1fr;
+  }
+
+  .browser-command-actions {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .executive-grid {
@@ -1742,6 +1819,8 @@ textarea {
   }
 
   .mission-grid,
+  .browser-command-metrics,
+  .browser-command-actions,
   .modules,
   .now-next,
   .sleep-form,
@@ -1772,6 +1851,18 @@ textarea {
     .stat-strip,
     .settings-grid {
     grid-template-columns: 1fr;
+  }
+
+  .browser-command-panel {
+    padding: 12px;
+  }
+
+  .browser-command-copy h3 {
+    font-size: 18px;
+  }
+
+  .browser-mini-metric b {
+    white-space: normal;
   }
 
   .executive-card.wide {
