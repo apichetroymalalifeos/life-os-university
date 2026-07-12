@@ -8,7 +8,7 @@
   const roadmaps = window.LIFE_OS_ROADMAPS;
   let state = Storage.load();
   let pwaStatusMessage = "";
-  const APP_VERSION = "7.1.0";
+  const APP_VERSION = "8.0.0";
   const LIFE_OS_CACHE_PREFIX = "life-os-university-pwa-";
   let pendingServiceWorker = null;
   let updateVersionInfo = null;
@@ -519,11 +519,12 @@
 
   function renderTopCommand() {
     const today = Engine.ensureToday(state, roadmaps);
-    const current = localBlock(Engine.getCurrentBlock());
-    const next = localBlock(Engine.getNextBlock());
+    const current = localBlock(Engine.getCurrentBlock(new Date(), state));
+    const next = localBlock(Engine.getNextBlock(new Date(), state));
     const recovery = Engine.recoveryStatus(state);
     const daily = Engine.dailyScore(state);
     const weekly = Engine.weeklyScore(state);
+    const mode = Engine.modeForDate?.(state) || "production";
 
     $("#greetingText").textContent = greetingForHour(new Date().getHours());
     $("#recoveryLabel").textContent = recoveryLabel(recovery);
@@ -533,6 +534,7 @@
     $("#currentMission").textContent = current.mission;
     $("#nextMission").textContent = `${next.start} ${next.title}`;
     $("#progressToday").textContent = `${daily.percent}%`;
+    if ($("#dayModeBadge")) $("#dayModeBadge").textContent = Engine.modeLabel?.(mode) || mode;
     $("#progressRing").style.setProperty("--progress", `${daily.percent * 3.6}deg`);
     $("#dailyScore").textContent = `${daily.complete}/${daily.total}`;
     $("#weeklyScore").textContent = `${weekly.percent}%`;
@@ -540,7 +542,7 @@
     $("#longestStreak").textContent = state.streaks.longest;
     $("#completionPct").textContent = `${Engine.completionPercent(state)}%`;
     $("#todayFocus").textContent = today.customer ? localCustomer(today.customer).closingObjective : t("generateToDefineSales");
-    if ($("#mobileStatus")) $("#mobileStatus").textContent = `${t("todayStatus")} ${daily.percent}% · ${recoveryLabel(recovery)}`;
+    if ($("#mobileStatus")) $("#mobileStatus").textContent = `${Engine.modeLabel?.(mode) || t("todayStatus")} · ${daily.percent}%`;
   }
 
   function greetingForHour(hour) {
@@ -555,13 +557,13 @@
   }
 
   function renderNowNext() {
-    const current = localBlock(Engine.getCurrentBlock());
-    const nextThirty = localBlock(Engine.getNextThirty());
-    const next = localBlock(Engine.getNextBlock());
+    const current = localBlock(Engine.getCurrentBlock(new Date(), state));
+    const nextThirty = localBlock(Engine.getNextThirty(new Date(), state));
+    const next = localBlock(Engine.getNextBlock(new Date(), state));
 
     $("#nowTitle").textContent = current.title;
     $("#nowDetail").textContent = current.mission;
-    $("#nowCountdown").textContent = `${t("nextBlockIn")} ${Engine.countdownToNext()}`;
+    $("#nowCountdown").textContent = `${t("nextBlockIn")} ${Engine.countdownToNext(new Date(), state)}`;
 
     if (nextThirty.id === current.id) {
       $("#nextTitle").textContent = `${next.start} ${next.title}`;
@@ -573,9 +575,9 @@
   }
 
   function renderSchedule() {
-    const current = Engine.getCurrentBlock();
-    const nextThirty = Engine.getNextThirty();
-    $("#scheduleList").innerHTML = Engine.schedule.map(block => {
+    const current = Engine.getCurrentBlock(new Date(), state);
+    const nextThirty = Engine.getNextThirty(new Date(), state);
+    $("#scheduleList").innerHTML = Engine.scheduleForDate(state).map(block => {
       const active = block.id === current.id;
       const upcoming = block.id === nextThirty.id && !active;
       const display = localBlock(block);
@@ -1028,6 +1030,159 @@
     node.innerHTML = `<div class="debug-grid">${rows}</div>`;
   }
 
+  function wheelOfLifeSvg(balance) {
+    const size = 220;
+    const center = size / 2;
+    const maxRadius = 86;
+    const points = balance.dimensions.map((dimension, index) => {
+      const angle = (-90 + index * 60) * Math.PI / 180;
+      const radius = maxRadius * (dimension.score / 100);
+      return `${center + Math.cos(angle) * radius},${center + Math.sin(angle) * radius}`;
+    }).join(" ");
+    const axes = balance.dimensions.map((dimension, index) => {
+      const angle = (-90 + index * 60) * Math.PI / 180;
+      const x = center + Math.cos(angle) * maxRadius;
+      const y = center + Math.sin(angle) * maxRadius;
+      const lx = center + Math.cos(angle) * (maxRadius + 18);
+      const ly = center + Math.sin(angle) * (maxRadius + 18);
+      return `<line x1="${center}" y1="${center}" x2="${x}" y2="${y}" /><text x="${lx}" y="${ly}" text-anchor="middle">${dimension.score}</text>`;
+    }).join("");
+    return `
+      <figure class="wheel-wrap">
+        <svg viewBox="0 0 ${size} ${size}" role="img" aria-label="Wheel of Life scores: ${balance.dimensions.map(item => `${item.label} ${item.score}`).join(", ")}">
+          <circle cx="${center}" cy="${center}" r="${maxRadius}" />
+          <circle cx="${center}" cy="${center}" r="${Math.round(maxRadius * .66)}" />
+          <circle cx="${center}" cy="${center}" r="${Math.round(maxRadius * .33)}" />
+          ${axes}
+          <polygon points="${points}" />
+        </svg>
+        <figcaption>Wheel of Life: ${balance.dimensions.map(item => `${item.label} ${item.score}`).join(" · ")}</figcaption>
+      </figure>
+    `;
+  }
+
+  function renderWeekendDashboard() {
+    const node = $("#weekendDashboard");
+    if (!node) return;
+    const data = Engine.weekendDashboard(state, roadmaps);
+    const mode = data.mode;
+    const isSaturdaySchedule = data.schedule.some(block => block.id === "satFutsal");
+    const isSundaySchedule = data.schedule.some(block => block.id === "sunCeoReview");
+    const isWeekend = isSaturdaySchedule || isSundaySchedule;
+    const blocks = data.schedule.filter(block => isSaturdaySchedule
+      ? ["satZone2", "satFutsal", "satLearning", "satCrypto", "satFamilyActivity", "satLongevity", "satWindDown"].includes(block.id)
+      : ["sunCeoReview", "sunFamilyBlock", "sunFuture", "sunFutsalFun", "sunPrepareWeek", "sunLightWorkout", "sunLearningReview"].includes(block.id)
+    );
+    const review = data.ceoReview || {};
+    node.innerHTML = `
+      <div class="weekend-mode-head">
+        <div>
+          <span class="eyebrow">${isWeekend ? "Weekend Mode" : "Weekday Mode"}</span>
+          <h3>${escapeHtml(data.modeLabel)}</h3>
+          <p>${isWeekend ? "Weekends optimize growth, family, recovery, and preparation without sacrificing sleep." : "Weekday production mode remains unchanged."}</p>
+        </div>
+        <label>Manual override today
+          <select id="dayModeOverrideSelect">
+            ${[
+              ["auto", "Auto"],
+              ["workday", "ใช้โหมดวันทำงาน"],
+              ["saturday", "ใช้โหมดวันเสาร์"],
+              ["sunday", "ใช้โหมดวันอาทิตย์"],
+              ["custom", "ปรับตารางเองวันนี้"]
+            ].map(([value, label]) => `<option value="${value}" ${(Engine.dayState(state).modeOverride || "auto") === value ? "selected" : ""}>${label}</option>`).join("")}
+          </select>
+        </label>
+      </div>
+      <div class="weekend-grid">
+        <article class="weekend-card">
+          <span>Recovery status</span>
+          <h3>${escapeHtml(data.recovery.label)}</h3>
+          <p>Confidence: ${escapeHtml(data.recovery.confidence || "Medium")} · Low recovery never schedules hard training.</p>
+        </article>
+        <article class="weekend-card protected-family">
+          <span>Weekend Family Mission</span>
+          <h3>${isSundaySchedule ? "Sunday family + preparation" : "Saturday futsal + family"}</h3>
+          <textarea id="weekendFamilyMissionInput">${escapeHtml(data.familyMission)}</textarea>
+          <button class="soft-btn" id="saveWeekendFamilyMissionBtn" type="button">Save Family Mission</button>
+        </article>
+        <article class="weekend-card">
+          <span>Exercise recommendation</span>
+          <h3>${escapeHtml(data.exercise.type)} · ${escapeHtml(data.exercise.duration)}</h3>
+          <p>${escapeHtml(data.exercise.reason)}</p>
+        </article>
+        <article class="weekend-card">
+          <span>${isSundaySchedule ? "Sunday CEO Review" : "Futsal activity with son"}</span>
+          <h3>${isSundaySchedule ? "Recover, reconnect, review life" : "เน้นคุณภาพ ความสนุก และพื้นฐาน"}</h3>
+          <p>${isSundaySchedule ? "Review health, sleep, work, pipeline, finance, learning, son, wife/family, recovery." : "Warm-up, ball mastery, passing, first touch, shooting, small game, cool-down."}</p>
+        </article>
+        <article class="weekend-card">
+          <span>Main learning lesson</span>
+          <h3>${facultyIcon(data.focus.faculty)} ${facultyLabel(data.focus.faculty)} · Day ${data.focus.lesson.day}</h3>
+          <p>${escapeHtml(data.focus.lesson.title)}</p>
+        </article>
+        <article class="weekend-card">
+          <span>Secondary learning block</span>
+          <h3>${facultyIcon(data.secondary.faculty)} ${facultyLabel(data.secondary.faculty)}</h3>
+          <p>${escapeHtml(data.secondary.lesson.title)}</p>
+        </article>
+        <article class="weekend-card wide">
+          <span>Weekend activity controls</span>
+          <div class="weekend-activity-list">
+            ${blocks.map(block => `
+              <div class="weekend-activity">
+                <b>${block.start} ${escapeHtml(block.title)}</b>
+                <p>${escapeHtml(block.mission)}</p>
+                <div class="button-row three">
+                  <button class="primary-btn" data-weekend-action="done" data-block-id="${block.id}" type="button">เสร็จแล้ว</button>
+                  <button class="ghost-btn" data-weekend-action="delayed" data-block-id="${block.id}" type="button">เลื่อนไปภายหลัง</button>
+                  <button class="ghost-btn" data-weekend-action="skipped" data-block-id="${block.id}" type="button">ข้ามวันนี้</button>
+                </div>
+                <div class="button-row">
+                  <button class="soft-btn" data-weekend-action="change" data-block-id="${block.id}" type="button">เปลี่ยนกิจกรรม</button>
+                  <button class="soft-btn" data-weekend-action="time" data-block-id="${block.id}" type="button">ปรับเวลา</button>
+                  <button class="soft-btn" data-weekend-action="default" data-block-id="${block.id}" type="button">ใช้เป็นค่าเริ่มต้นทุกสัปดาห์</button>
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        </article>
+        <article class="weekend-card wide">
+          <span>Life Balance Score</span>
+          <div class="life-balance-head">
+            <strong>${data.balance.score}</strong>
+            <div>
+              <p>${escapeHtml(data.balance.warning)}</p>
+              <small>Data quality: ${escapeHtml(data.balance.dataQuality)} · Confidence: ${escapeHtml(data.balance.confidence)} · 4-week trend: ${data.balance.trend.join(" → ") || "new"}</small>
+            </div>
+          </div>
+          ${wheelOfLifeSvg(data.balance)}
+          <div class="balance-detail-grid">
+            ${data.balance.dimensions.map(item => `
+              <details class="balance-detail">
+                <summary>${escapeHtml(item.label)} · ${item.score} · ${escapeHtml(item.quality)}</summary>
+                <p>${escapeHtml(item.reason)}</p>
+                <p><b>Adjustment:</b> ${escapeHtml(item.adjustment)}</p>
+              </details>
+            `).join("")}
+          </div>
+        </article>
+        <article class="weekend-card wide ${isSundaySchedule ? "" : "soft-hidden"}">
+          <span>Sunday CEO Review Storage</span>
+          <form id="sundayCeoReviewForm" class="ceo-review-form">
+            ${["highlights", "problems", "health", "family", "work", "finance", "learning", "recovery", "top3", "stop", "continue", "improve"].map(field => `
+              <label>${field}<textarea name="${field}" rows="2">${escapeHtml(review[field] || "")}</textarea></label>
+            `).join("")}
+            <button class="primary-btn" type="submit">Save Sunday CEO Review</button>
+          </form>
+        </article>
+        <article class="weekend-card wide">
+          <span>Weekend notification note</span>
+          <p>Saturday reminders: morning movement, futsal with son, protected family block, wind-down. Sunday reminders: CEO Review, protected family block, prepare next week, wind-down. Browser/iPhone PWA background notifications are limited and not guaranteed.</p>
+        </article>
+      </div>
+    `;
+  }
+
   function renderMobileQaChecklist() {
     const node = $("#mobileQaChecklist");
     if (!node) return;
@@ -1053,6 +1208,57 @@
         `).join("")}
       </div>
       <p class="small-muted">เช็กบนมือถือจริงหลัง publish ทุกครั้ง โดยเฉพาะ PWA cache และปุ่ม Complete</p>
+    `;
+  }
+
+  function renderWeekendSettings() {
+    const node = $("#weekendSettings");
+    if (!node) return;
+    const settings = state.weekend?.settings || {};
+    node.innerHTML = `
+      <form class="weekend-settings-form" id="weekendSettingsForm">
+        <label>Saturday wake time<input name="saturdayWakeTime" type="time" value="${escapeHtml(settings.saturdayWakeTime || "05:30")}"></label>
+        <label>Sunday wake time<input name="sundayWakeTime" type="time" value="${escapeHtml(settings.sundayWakeTime || "06:00")}"></label>
+        <label>Saturday futsal time<input name="saturdayFutsalTime" type="time" value="${escapeHtml(settings.saturdayFutsalTime || "09:00")}"></label>
+        <label>Sunday family activity time<input name="sundayFamilyActivityTime" type="time" value="${escapeHtml(settings.sundayFamilyActivityTime || "09:00")}"></label>
+        <label>Shopping mall / family block<input name="familyActivityDefault" type="text" value="${escapeHtml(settings.familyActivityDefault || "Shopping mall / cafe / park / family errands")}"></label>
+        <label>Weekend learning duration<input name="weekendLearningMinutes" type="number" min="10" max="90" step="5" value="${Number(settings.weekendLearningMinutes || 45)}"></label>
+        <label>Exercise preference
+          <select name="exercisePreference">
+            ${[
+              ["walk_zone2", "Zone 2 / walk"],
+              ["mobility", "Mobility"],
+              ["easy_strength", "Easy strength"],
+              ["family_walk", "Family walk"]
+            ].map(([value, label]) => `<option value="${value}" ${settings.exercisePreference === value ? "selected" : ""}>${label}</option>`).join("")}
+          </select>
+        </label>
+        <label>IF window<input name="ifWindow" type="text" value="${escapeHtml(settings.ifWindow || "12:00-19:00")}"></label>
+        <label>Default weekend mode
+          <select name="defaultWeekendMode">
+            ${[
+              ["auto", "Auto"],
+              ["saturday", "Always Saturday mode"],
+              ["sunday", "Always Sunday mode"]
+            ].map(([value, label]) => `<option value="${value}" ${settings.defaultWeekendMode === value ? "selected" : ""}>${label}</option>`).join("")}
+          </select>
+        </label>
+        <label>Manual recovery input
+          <select name="manualRecovery">
+            ${[
+              ["auto", "Auto"],
+              ["high", "High"],
+              ["medium", "Medium"],
+              ["low", "Low"]
+            ].map(([value, label]) => `<option value="${value}" ${settings.manualRecovery === value ? "selected" : ""}>${label}</option>`).join("")}
+          </select>
+        </label>
+        <div class="button-row">
+          <button class="primary-btn" type="submit">Save Weekend Settings</button>
+          <button class="ghost-btn" id="resetWeekendDefaultsBtn" type="button">คืนค่าตารางสุดสัปดาห์เริ่มต้น</button>
+        </div>
+      </form>
+      <p class="small-muted">ค่าพวกนี้ไม่รีเซ็ต progress, streak, decision memory หรือ sleep logs</p>
     `;
   }
 
@@ -1341,7 +1547,7 @@
     const today = Engine.ensureToday(state, roadmaps);
     const faculty = today.dailyFocus?.focus || today.currentFaculty || state.university.currentFaculty;
     const lesson = Engine.lessonForToday(state, roadmaps, faculty);
-    const current = localBlock(Engine.getCurrentBlock());
+    const current = localBlock(Engine.getCurrentBlock(new Date(), state));
     const workout = localWorkout(today.workout);
     const family = localFamilyMission();
     const customer = localCustomer(today.customer);
@@ -1599,7 +1805,7 @@
       const today = Engine.ensureToday(state, roadmaps);
       const faculty = today.dailyFocus?.focus || today.currentFaculty || state.university.currentFaculty;
       const lesson = Engine.lessonForToday(state, roadmaps, faculty);
-      const current = localBlock(Engine.getCurrentBlock());
+      const current = localBlock(Engine.getCurrentBlock(new Date(), state));
       const customer = localCustomer(today.customer);
       const workout = localWorkout(today.workout);
       const family = localFamilyMission();
@@ -1660,6 +1866,23 @@
     $("#forceFreshBtn")?.addEventListener("click", forceFreshReload);
     $("#exportLocalStorageBtn")?.addEventListener("click", exportLocalStorageBackup);
     $("#resetDemoDataBtn")?.addEventListener("click", resetDemoDataOnly);
+    $("#resetWeekendDefaultsBtn")?.addEventListener("click", () => {
+      state.weekend.activityOverrides = {};
+      state.weekend.activityDefaults = {};
+      state.weekend.settings = {
+        saturdayWakeTime: "05:30",
+        sundayWakeTime: "06:00",
+        saturdayFutsalTime: "09:00",
+        sundayFamilyActivityTime: "09:00",
+        familyActivityDefault: "Shopping mall / cafe / park / family errands",
+        weekendLearningMinutes: 45,
+        exercisePreference: "walk_zone2",
+        ifWindow: "12:00-19:00",
+        defaultWeekendMode: "auto",
+        manualRecovery: "auto"
+      };
+      saveAndRender();
+    });
 
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") checkForUpdates();
@@ -1683,9 +1906,67 @@
       const refresh = event.target.closest("[data-refresh]");
       const toggle = event.target.closest("[data-toggle-task]");
       const modeToggle = event.target.closest("#toggleExecutiveBriefModeBtn");
+      const weekendAction = event.target.closest("[data-weekend-action]");
+      const resetWeekend = event.target.closest("#resetWeekendDefaultsBtn");
 
       if (modeToggle) {
         state.settings.executiveBriefMode = state.settings.executiveBriefMode === "quick" ? "detailed" : "quick";
+        saveAndRender();
+        return;
+      }
+
+      if (resetWeekend) {
+        state.weekend.activityOverrides = {};
+        state.weekend.activityDefaults = {};
+        state.weekend.settings = {
+          saturdayWakeTime: "05:30",
+          sundayWakeTime: "06:00",
+          saturdayFutsalTime: "09:00",
+          sundayFamilyActivityTime: "09:00",
+          familyActivityDefault: "Shopping mall / cafe / park / family errands",
+          weekendLearningMinutes: 45,
+          exercisePreference: "walk_zone2",
+          ifWindow: "12:00-19:00",
+          defaultWeekendMode: "auto",
+          manualRecovery: "auto"
+        };
+        saveAndRender();
+        return;
+      }
+
+      if (weekendAction) {
+        const key = Engine.dateKey();
+        const blockId = weekendAction.dataset.blockId;
+        const action = weekendAction.dataset.weekendAction;
+        state.weekend.activityOverrides ||= {};
+        state.weekend.activityOverrides[key] ||= {};
+        state.weekend.activityOverrides[key][blockId] ||= {};
+        if (action === "change") {
+          const value = window.prompt("เปลี่ยนกิจกรรมวันนี้เป็นอะไร?", state.weekend.activityOverrides[key][blockId].mission || "");
+          if (value) state.weekend.activityOverrides[key][blockId].mission = value;
+        } else if (action === "time") {
+          const value = window.prompt("ปรับเวลาเริ่มต้นวันนี้ เช่น 10:00", state.weekend.activityOverrides[key][blockId].start || "");
+          if (value) state.weekend.activityOverrides[key][blockId].start = value;
+        } else if (action === "default") {
+          const currentBlock = Engine.scheduleForDate(state).find(block => block.id === blockId);
+          state.weekend.activityDefaults ||= {};
+          state.weekend.activityDefaults[blockId] = {
+            start: state.weekend.activityOverrides[key][blockId].start || currentBlock?.start,
+            mission: state.weekend.activityOverrides[key][blockId].mission || currentBlock?.mission,
+            title: currentBlock?.title,
+            detail: currentBlock?.detail
+          };
+          delete state.weekend.activityOverrides[key][blockId].status;
+        } else {
+          state.weekend.activityOverrides[key][blockId].status = action;
+        }
+        saveAndRender();
+        return;
+      }
+
+      if (event.target.closest("#saveWeekendFamilyMissionBtn")) {
+        state.weekend.familyMissions ||= {};
+        state.weekend.familyMissions[Engine.dateKey()] = $("#weekendFamilyMissionInput").value;
         saveAndRender();
         return;
       }
@@ -1764,6 +2045,50 @@
     });
 
     document.addEventListener("submit", event => {
+      if (event.target.id === "weekendSettingsForm") {
+        event.preventDefault();
+        const form = new FormData(event.target);
+        state.weekend.settings = {
+          saturdayWakeTime: form.get("saturdayWakeTime") || "05:30",
+          sundayWakeTime: form.get("sundayWakeTime") || "06:00",
+          saturdayFutsalTime: form.get("saturdayFutsalTime") || "09:00",
+          sundayFamilyActivityTime: form.get("sundayFamilyActivityTime") || "09:00",
+          familyActivityDefault: form.get("familyActivityDefault") || "Shopping mall / cafe / park / family errands",
+          weekendLearningMinutes: Number(form.get("weekendLearningMinutes") || 45),
+          exercisePreference: form.get("exercisePreference") || "walk_zone2",
+          ifWindow: form.get("ifWindow") || "12:00-19:00",
+          defaultWeekendMode: form.get("defaultWeekendMode") || "auto",
+          manualRecovery: form.get("manualRecovery") || "auto"
+        };
+        saveAndRender();
+        return;
+      }
+
+      if (event.target.id === "sundayCeoReviewForm") {
+        event.preventDefault();
+        const form = new FormData(event.target);
+        const id = Engine.weekId();
+        state.weekend.ceoReviews ||= {};
+        state.weekend.ceoReviews[id] = {
+          weekId: id,
+          savedAt: new Date().toISOString(),
+          highlights: form.get("highlights") || "",
+          problems: form.get("problems") || "",
+          health: form.get("health") || "",
+          family: form.get("family") || "",
+          work: form.get("work") || "",
+          finance: form.get("finance") || "",
+          learning: form.get("learning") || "",
+          recovery: form.get("recovery") || "",
+          top3: form.get("top3") || "",
+          stop: form.get("stop") || "",
+          continue: form.get("continue") || "",
+          improve: form.get("improve") || ""
+        };
+        saveAndRender();
+        return;
+      }
+
       if (event.target.id === "executiveReflectionForm") {
         event.preventDefault();
         const form = new FormData(event.target);
@@ -1821,6 +2146,14 @@
     });
 
     document.addEventListener("change", event => {
+      if (event.target.id === "dayModeOverrideSelect") {
+        const today = Engine.dayState(state);
+        today.modeOverride = event.target.value;
+        Engine.generateToday(state, roadmaps);
+        saveAndRender();
+        return;
+      }
+
       if (event.target.matches("[data-mobile-qa]")) {
         state.executive.mobileQa ||= {};
         state.executive.mobileQa[event.target.dataset.mobileQa] = event.target.checked;
@@ -1845,6 +2178,7 @@
     renderTime();
     renderTopCommand();
     renderExecutiveBrief();
+    renderWeekendDashboard();
     renderNowNext();
     renderSchedule();
     renderSleepForm();
@@ -1859,6 +2193,7 @@
     renderAppVersion();
     renderProgressDebug();
     renderMobileQaChecklist();
+    renderWeekendSettings();
     Storage.save(state);
   }
 

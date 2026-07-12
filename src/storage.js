@@ -13,7 +13,7 @@
   };
 
   const defaultState = {
-    version: "7.1",
+    version: "8.0",
     generatedDate: null,
     sleep: { hours: "", deep: "", rem: "", wakes: "" },
     sleepLogs: [],
@@ -55,7 +55,27 @@
       ],
       mobileQa: {}
     },
-    settings: { workoutOverride: "auto", language: "en", notificationsEnabled: false, sleepFormOpen: false, executiveBriefMode: "detailed", progressSchemaVersion: 2 },
+    weekend: {
+      modeOverrides: {},
+      activityOverrides: {},
+      activityDefaults: {},
+      ceoReviews: {},
+      familyMissions: {},
+      lifeBalanceHistory: {},
+      settings: {
+        saturdayWakeTime: "05:30",
+        sundayWakeTime: "06:00",
+        saturdayFutsalTime: "09:00",
+        sundayFamilyActivityTime: "09:00",
+        familyActivityDefault: "Shopping mall / cafe / park / family errands",
+        weekendLearningMinutes: 45,
+        exercisePreference: "walk_zone2",
+        ifWindow: "12:00-19:00",
+        defaultWeekendMode: "auto",
+        manualRecovery: "auto"
+      }
+    },
+    settings: { workoutOverride: "auto", language: "en", notificationsEnabled: false, sleepFormOpen: false, executiveBriefMode: "detailed", progressSchemaVersion: 3 },
     streaks: { current: 0, longest: 0, lastFullCompleteDate: null }
   };
 
@@ -118,6 +138,14 @@
       ? state.executive.salesPipeline
       : clone(defaultState.executive.salesPipeline);
     state.executive.mobileQa = Object.assign(clone(defaultState.executive.mobileQa), state.executive.mobileQa || {});
+    state.weekend = Object.assign(clone(defaultState.weekend), state.weekend || {});
+    state.weekend.modeOverrides ||= {};
+    state.weekend.activityOverrides ||= {};
+    state.weekend.activityDefaults ||= {};
+    state.weekend.ceoReviews ||= {};
+    state.weekend.familyMissions ||= {};
+    state.weekend.lifeBalanceHistory ||= {};
+    state.weekend.settings = Object.assign(clone(defaultState.weekend.settings), state.weekend.settings || {});
     state.university = Object.assign(clone(defaultState.university), state.university || {});
     state.university.weakAreas ||= [];
     state.university.strongAreas ||= [];
@@ -127,7 +155,7 @@
     state.university.currentFaculty = LEGACY_FACULTY_MAP[state.university.currentFaculty] || state.university.currentFaculty || "ai_automation";
     state.settings = Object.assign(clone(defaultState.settings), state.settings || {});
     state.streaks = Object.assign(clone(defaultState.streaks), state.streaks || {});
-    state.version = "7.1";
+    state.version = "8.0";
     return state;
   }
 
@@ -152,6 +180,10 @@
   function load() {
     try {
       const parsed = JSON.parse(localStorage.getItem(STATE_KEY));
+      if (parsed && String(parsed.version || "") !== "8.0" && !parsed.weekendBackupCreated) {
+        localStorage.setItem(`lifeOS_full_backup_${Date.now()}`, JSON.stringify(parsed));
+        parsed.weekendBackupCreated = true;
+      }
       if (parsed && !parsed.progressBackupCreated) {
         localStorage.setItem(`lifeOS_progress_backup_${Date.now()}`, JSON.stringify(parsed.progress || {}));
         parsed.progressBackupCreated = true;
