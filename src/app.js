@@ -8,7 +8,7 @@
   const roadmaps = window.LIFE_OS_ROADMAPS;
   let state = Storage.load();
   let pwaStatusMessage = "";
-  const APP_VERSION = "8.0.1";
+  const APP_VERSION = "8.0.4";
   const LIFE_OS_CACHE_PREFIX = "life-os-university-pwa-";
   let pendingServiceWorker = null;
   let updateVersionInfo = null;
@@ -547,6 +547,7 @@
 
   function renderBrowserCommandCenter() {
     if (!$("#browserCommandSection")) return;
+    document.body.classList.toggle("mobile-details-open", Boolean(state.settings.mobileDetailsOpen));
     const today = Engine.ensureToday(state, roadmaps);
     const current = localBlock(Engine.getCurrentBlock(new Date(), state));
     const next = localBlock(Engine.getNextBlock(new Date(), state));
@@ -568,6 +569,24 @@
         <b>${escapeHtml(value)}</b>
       </div>
     `).join("");
+    const detailsToggle = $("#mobileDetailsToggle");
+    if (detailsToggle) {
+      detailsToggle.textContent = state.settings.mobileDetailsOpen ? "ซ่อนรายละเอียด" : "ดูรายละเอียดทั้งหมด";
+    }
+  }
+
+  function renderMobileAccordions() {
+    state.settings.mobileAccordions ||= { learn: false, health: false, settings: false };
+    const map = {
+      learn: "#learnSection",
+      health: "#sleepSection",
+      settings: "#settingsSection"
+    };
+    Object.entries(map).forEach(([key, selector]) => {
+      const node = $(selector);
+      if (node) node.classList.toggle("accordion-open", Boolean(state.settings.mobileAccordions[key]));
+    });
+    $("#sleepSection")?.classList.toggle("sleep-detail-open", Boolean(state.settings.mobileAccordions.sleepDetail));
   }
 
   function greetingForHour(hour) {
@@ -1094,6 +1113,11 @@
     const isSaturdaySchedule = data.schedule.some(block => block.id === "satFutsal");
     const isSundaySchedule = data.schedule.some(block => block.id === "sunCeoReview");
     const isWeekend = isSaturdaySchedule || isSundaySchedule;
+    $("#weekendSection")?.classList.toggle("hidden", !isWeekend);
+    if (!isWeekend) {
+      node.innerHTML = "";
+      return;
+    }
     const blocks = data.schedule.filter(block => isSaturdaySchedule
       ? ["satZone2", "satFutsal", "satLearning", "satCrypto", "satFamilyActivity", "satLongevity", "satWindDown"].includes(block.id)
       : ["sunCeoReview", "sunFamilyBlock", "sunFuture", "sunFutsalFun", "sunPrepareWeek", "sunLightWorkout", "sunLearningReview"].includes(block.id)
@@ -1351,75 +1375,27 @@
       return;
     }
     const log = analysis.log;
-    const plan = [
-      "05:30 ตื่นนอน ดื่มน้ำ รับแสงถ้ามี",
-      "05:45–05:55 mobility / stretch 10 นาที",
-      "05:55–06:00 เตรียมออกจากบ้าน",
-      "06:00–06:45 ส่งลูกชายไปโรงเรียน ขับรถปลอดภัย ไม่ดูจอ",
-      "06:45–07:00 Reset หลังขับรถ: หายใจ 2 นาที + ดื่มน้ำ",
-      "09:00 ดื่มกาแฟได้ แต่ไม่เกิน 2 แก้ว",
-      "หลัง 14:00 งดคาเฟอีน",
-      "10:00–17:00 ช่วงเหมาะออกกำลังกาย",
-      "18:00 รับลูก / กิจวัตรครอบครัว",
-      "18:30–19:00 มื้อเย็น ไม่หนักเกินไป",
-      "20:00 เริ่มลดงาน ลดเรื่องเครียด",
-      "20:30 ลดแสงในบ้าน ลดแสงจอ",
-      "21:00 งดงาน งดข่าว งดโซเชียลหนัก ๆ",
-      "21:15 อาบน้ำอุ่น / เตรียมของพรุ่งนี้",
-      "21:30 อ่านหนังสือเบา ๆ หรือฟังเสียงผ่อนคลาย",
-      "21:45 ฝึกหายใจ 4-2-6 หรือยืดเหยียดเบา ๆ",
-      "22:00 เข้านอน"
-    ];
+    const recovery = Sleep.recoveryScore(logs);
 
     node.innerHTML = `
       ${analysis.holidayNote ? `<div class="notice warn">${analysis.holidayNote}</div>` : ""}
-      <div class="sleep-card-grid">
+      <div class="sleep-card-grid sleep-summary-grid">
         <article class="sleep-card score-card">
-          <span>Sleep Score Card</span>
+          <span>Sleep Score</span>
           <strong>${log.sleep_score}</strong>
-          <p>${log.date} · ${log.day_type}</p>
-        </article>
-        <article class="sleep-card">
-          <span>Sleep Timeline Card</span>
-          <b>${log.bedtime} → ${log.wake_time}</b>
-          <p>เป้าหมาย ${log.target_bedtime}–${log.target_wake_time} · ${Sleep.formatMinutes(log.target_sleep_minutes)}</p>
-        </article>
-        <article class="sleep-card">
-          <span>Sleep Stage Card</span>
-          ${sleepBar("Deep", log.deep_sleep_percent)}
-          ${sleepBar("Light", log.light_sleep_percent)}
-          ${sleepBar("REM", log.rem_sleep_percent)}
-        </article>
-        <article class="sleep-card">
-          <span>Breathing & SpO2 Card</span>
-          <b>Breathing ${log.breathing_quality_score ?? "-"} / 100</b>
-          <p>SpO2 ${log.spo2_range || "-"} · HR ${log.heart_rate_range || "-"} · BR ${log.breathing_rate_range || "-"}</p>
+          <p>${log.date} · ${Sleep.formatMinutes(log.total_sleep_minutes)} · Deep ${log.deep_sleep_percent}% · REM ${log.rem_sleep_percent}%</p>
         </article>
         <article class="sleep-card good">
-          <span>Strength Card</span>
-          <b>${analysis.strengths[0] || "ยังไม่มีจุดแข็งเด่น"}</b>
-          <p>${analysis.strengths.slice(1).join(" · ")}</p>
-        </article>
-        <article class="sleep-card warn">
-          <span>Weakness Card</span>
-          <b>${analysis.primaryWeakness}</b>
-          <p>${log.notes || "ดูแนวโน้ม 7 วันก่อนตัดสินใจรุนแรง"}</p>
+          <span>Recovery</span>
+          <strong>${recovery.score}</strong>
+          <p>${recovery.status} · ${analysis.strengths[0] || "ดูแนวโน้มต่อเนื่อง"}</p>
         </article>
         <article class="sleep-card">
-          <span>Today Fix Card</span>
+          <span>Today Fix</span>
           <b>${analysis.todayFix}</b>
-          <p>เน้น sleep consistency มากกว่าฝืนตื่นเช้า</p>
-        </article>
-        <article class="sleep-card">
-          <span>Tonight Target Card</span>
-          <b>${analysis.tonightTarget}</b>
-          <p>${analysis.medicalNote}</p>
+          <p>${analysis.primaryWeakness} · เป้าหมายคืนนี้ ${log.target_bedtime}–${log.target_wake_time}</p>
         </article>
       </div>
-      <article class="sleep-card daily-plan">
-        <span>Daily Sleep Plan Card</span>
-        <div class="sleep-plan-list">${plan.map(item => `<p>${item}</p>`).join("")}</div>
-      </article>
     `;
   }
 
@@ -1933,20 +1909,52 @@
       const modeToggle = event.target.closest("#toggleExecutiveBriefModeBtn");
       const weekendAction = event.target.closest("[data-weekend-action]");
       const browserAction = event.target.closest("[data-browser-action]");
+      const accordionToggle = event.target.closest("[data-accordion-toggle]");
+      const accordionLink = event.target.closest("[data-open-accordion]");
       const resetWeekend = event.target.closest("#resetWeekendDefaultsBtn");
+
+      if (accordionToggle) {
+        const key = accordionToggle.dataset.accordionToggle;
+        state.settings.mobileDetailsOpen = true;
+        state.settings.mobileAccordions ||= {};
+        state.settings.mobileAccordions[key] = !state.settings.mobileAccordions[key];
+        saveAndRender();
+        return;
+      }
+
+      if (accordionLink) {
+        event.preventDefault();
+        const key = accordionLink.dataset.openAccordion;
+        state.settings.mobileDetailsOpen = true;
+        state.settings.mobileAccordions ||= {};
+        state.settings.mobileAccordions[key] = true;
+        saveAndRender();
+        setTimeout(() => document.querySelector(accordionLink.getAttribute("href"))?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+        return;
+      }
 
       if (browserAction) {
         const action = browserAction.dataset.browserAction;
+        if (action === "details") {
+          state.settings.mobileDetailsOpen = !state.settings.mobileDetailsOpen;
+          saveAndRender();
+          return;
+        }
         if (action === "generate") {
+          state.settings.mobileDetailsOpen = true;
           generateTodayFlow();
           return;
         }
         if (action === "brief") {
+          state.settings.mobileDetailsOpen = true;
+          Storage.save(state);
+          renderBrowserCommandCenter();
           $("#morningBriefBtn")?.click();
           $("#executiveSection")?.scrollIntoView({ behavior: "smooth", block: "start" });
           return;
         }
         if (action === "teach" || action === "drive") {
+          state.settings.mobileDetailsOpen = true;
           const today = Engine.ensureToday(state, roadmaps);
           const prompt = action === "drive"
             ? Engine.buildDriveLessonPrompt(state, roadmaps)
@@ -2232,6 +2240,7 @@
     renderTime();
     renderTopCommand();
     renderBrowserCommandCenter();
+    renderMobileAccordions();
     renderExecutiveBrief();
     renderWeekendDashboard();
     renderNowNext();

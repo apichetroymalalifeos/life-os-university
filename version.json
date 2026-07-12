@@ -1,6 +1,6 @@
 {
-  "version": "8.0.1",
-  "build": "2026-07-12-002",
-  "updatedAt": "2026-07-12T23:15:00+07:00",
-  "notes": "Added Browser Quick Command center for faster daily use"
+  "version": "8.0.4",
+  "build": "2026-07-12-005",
+  "updatedAt": "2026-07-12T23:55:00+07:00",
+  "notes": "Hid Weekend Intelligence on weekdays and simplified Sleep Summary with detailed Sleep accordion"
 }

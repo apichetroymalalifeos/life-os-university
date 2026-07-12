@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Life OS">
-  <title>Life OS University 8.0.1</title>
+  <title>Life OS University 8.0.4</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23090d0c'/%3E%3Cpath d='M16 7l9 5v8l-9 5-9-5v-8l9-5z' fill='none' stroke='%237ce38b' stroke-width='2'/%3E%3Cpath d='M16 12v8M12 16h8' stroke='%237ce38b' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
@@ -44,7 +44,7 @@
           </svg>
         </div>
         <div>
-          <h1>LIFE OS 8.0.1</h1>
+          <h1>LIFE OS 8.0.4</h1>
           <span data-i18n="brandSubtitle">Local Executive Operating System</span>
         </div>
       </div>
@@ -171,6 +171,7 @@
             <button class="soft-btn" data-browser-action="teach" type="button">Teach Me</button>
             <button class="soft-btn" data-browser-action="drive" type="button">Drive Lesson</button>
             <button class="ghost-btn" data-browser-action="brief" type="button">Morning Brief</button>
+            <button class="ghost-btn" data-browser-action="details" id="mobileDetailsToggle" type="button">ดูรายละเอียดทั้งหมด</button>
           </div>
         </div>
       </section>
@@ -215,6 +216,10 @@
         </section>
 
         <section class="modules" id="learnSection">
+          <button class="mobile-accordion-toggle" data-accordion-toggle="learn" type="button">
+            <span>Learn</span>
+            <b id="learnAccordionSummary">Focus lesson, Teach Me, Sales, Workout, Family</b>
+          </button>
           <article class="panel lesson-card wide" id="universityCard"></article>
           <article class="panel lesson-card wide" id="teachMeCard"></article>
           <article class="panel lesson-card wide" id="facultiesCard"></article>
@@ -224,7 +229,7 @@
         </section>
       </section>
 
-      <section class="grid" style="margin-top:14px">
+      <section class="grid daily-ops-section" style="margin-top:14px">
         <section class="panel">
           <div class="panel-title"><span data-i18n="dailyChecklist">Daily Checklist</span><small data-i18n="completionAdvances">Completion advances streaks</small></div>
           <div class="checklist">
@@ -246,15 +251,24 @@
       </section>
 
       <section class="sleep-dashboard" id="sleepSection">
+        <button class="mobile-accordion-toggle" data-accordion-toggle="health" type="button">
+          <span>Health</span>
+          <b id="healthAccordionSummary">Sleep, recovery, trends, manual sleep log</b>
+        </button>
         <section class="panel sleep-panel wide">
           <div class="panel-title">
-            <span>Sleep Optimization</span>
-            <small>Manual screenshot log · rule-based</small>
+            <span>Sleep Summary</span>
+            <small>Score · recovery · today fix</small>
           </div>
           <div id="sleepOptimization"></div>
         </section>
 
-        <section class="panel sleep-panel wide">
+        <button class="mobile-accordion-toggle sleep-detail-toggle" data-accordion-toggle="sleepDetail" type="button">
+          <span>Sleep Detail</span>
+          <b>Trend, debt, habits, recovery score, streak, weekly summary</b>
+        </button>
+
+        <section class="panel sleep-panel wide sleep-detail-panel">
           <div class="panel-title">
             <span>Sleep Intelligence</span>
             <small>Trend · debt · habits · recovery · streak</small>
@@ -273,6 +287,10 @@
       </section>
 
       <section class="grid settings-grid-wrap" id="settingsSection">
+        <button class="mobile-accordion-toggle" data-accordion-toggle="settings" type="button">
+          <span>Settings</span>
+          <b id="settingsAccordionSummary">Updates, backup, PWA, debug, weekend settings</b>
+        </button>
         <section class="panel">
           <div class="panel-title"><span data-i18n="settings">Settings</span><small data-i18n="freeLocalOnly">Free, local only</small></div>
           <div class="settings-grid">
@@ -331,13 +349,10 @@
 
   <nav class="mobile-bottom-nav" aria-label="Mobile navigation">
     <a href="#nowSection" data-i18n="navNow">Now</a>
-    <a href="#executiveSection">Brief</a>
-    <a href="#weekendSection">Balance</a>
-    <a href="#learnSection" data-i18n="navLearn">Learn</a>
-    <a href="#workoutCard" data-i18n="navWorkout">Workout</a>
-    <a href="#familyCard" data-i18n="navFamily">Family</a>
-    <a href="#sleepSection">Sleep</a>
-    <a href="#settingsSection" data-i18n="settings">Settings</a>
+    <a href="#learnSection" data-open-accordion="learn" data-i18n="navLearn">Learn</a>
+    <a href="#sleepSection" data-open-accordion="health">Health</a>
+    <a href="#familyCard" data-open-accordion="learn" data-i18n="navFamily">Family</a>
+    <a href="#settingsSection" data-open-accordion="settings" data-i18n="settings">Settings</a>
   </nav>
 
   <script src="src/roadmaps.generated.js"></script>

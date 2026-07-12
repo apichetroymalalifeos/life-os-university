@@ -70,12 +70,53 @@ select:focus {
 }
 
 .mobile-topbar,
-.mobile-bottom-nav {
+.mobile-bottom-nav,
+.mobile-accordion-toggle {
   display: none;
 }
 
 .hidden {
   display: none !important;
+}
+
+#sleepSection:not(.sleep-detail-open) .sleep-detail-panel {
+  display: none;
+}
+
+#sleepSection.sleep-detail-open .sleep-detail-toggle::after {
+  content: "แตะเพื่อปิด";
+}
+
+.sleep-detail-toggle {
+  width: 100%;
+  min-height: 54px;
+  display: grid;
+  gap: 4px;
+  margin: 10px 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, .04);
+  color: var(--text);
+  text-align: left;
+}
+
+.sleep-detail-toggle span {
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.sleep-detail-toggle b {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.sleep-detail-toggle::after {
+  content: "แตะเพื่อเปิด";
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 900;
 }
 
 .update-banner {
@@ -1776,7 +1817,7 @@ textarea {
     left: 0;
     z-index: 60;
     display: grid;
-    grid-template-columns: repeat(8, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 1px;
     padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
     border-top: 1px solid var(--line);
@@ -1863,6 +1904,69 @@ textarea {
 
   .browser-mini-metric b {
     white-space: normal;
+  }
+
+  .mobile-accordion-toggle {
+    width: 100%;
+    min-height: 58px;
+    display: grid;
+    gap: 4px;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: rgba(255, 255, 255, .04);
+    color: var(--text);
+    text-align: left;
+  }
+
+  .mobile-accordion-toggle span {
+    font-size: 14px;
+    font-weight: 900;
+  }
+
+  .mobile-accordion-toggle b {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 750;
+    line-height: 1.35;
+  }
+
+  .mobile-accordion-toggle::after {
+    content: "แตะเพื่อเปิด";
+    justify-self: start;
+    color: var(--green);
+    font-size: 11px;
+    font-weight: 900;
+  }
+
+  #learnSection.accordion-open > .mobile-accordion-toggle::after,
+  #sleepSection.accordion-open > .mobile-accordion-toggle::after,
+  #settingsSection.accordion-open > .mobile-accordion-toggle::after {
+    content: "แตะเพื่อปิด";
+  }
+
+  body.mobile-details-open #learnSection:not(.accordion-open) > article,
+  body.mobile-details-open #sleepSection:not(.accordion-open) > section,
+  body.mobile-details-open #settingsSection:not(.accordion-open) > section {
+    display: none;
+  }
+
+  body:not(.mobile-details-open) #executiveSection,
+  body:not(.mobile-details-open) #weekendSection,
+  body:not(.mobile-details-open) #learnSection,
+  body:not(.mobile-details-open) #sleepSection,
+  body:not(.mobile-details-open) #settingsSection,
+  body:not(.mobile-details-open) .daily-ops-section,
+  body:not(.mobile-details-open) #scheduleList {
+    display: none;
+  }
+
+  body:not(.mobile-details-open) #nowSection {
+    margin-top: 14px;
+  }
+
+  body:not(.mobile-details-open) #nowSection > .panel {
+    margin-bottom: 0;
   }
 
   .executive-card.wide {
