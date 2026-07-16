@@ -1,6 +1,6 @@
 {
-  "version": "8.0.4",
-  "build": "2026-07-12-005",
-  "updatedAt": "2026-07-12T23:55:00+07:00",
-  "notes": "Hid Weekend Intelligence on weekdays and simplified Sleep Summary with detailed Sleep accordion"
+  "version": "8.1.0",
+  "build": "2026-07-16-005",
+  "updatedAt": "2026-07-16T10:40:00+07:00",
+  "notes": "Converted the command center into a five-line autopilot, added Weekly Operating Review, and made One Button Morning stricter"
 }

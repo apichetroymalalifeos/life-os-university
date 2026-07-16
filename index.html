@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Life OS">
-  <title>Life OS University 8.0.4</title>
+  <title>Life OS University 8.1.0</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23090d0c'/%3E%3Cpath d='M16 7l9 5v8l-9 5-9-5v-8l9-5z' fill='none' stroke='%237ce38b' stroke-width='2'/%3E%3Cpath d='M16 12v8M12 16h8' stroke='%237ce38b' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
@@ -31,7 +31,7 @@
       <strong id="mobileTime">--:--</strong>
       <span id="mobileStatus">Today Status</span>
     </a>
-    <button class="primary-btn" id="mobileGenerateBtn" type="button" data-i18n="generateToday">Generate Today</button>
+    <button class="primary-btn" id="mobileGenerateBtn" type="button">เริ่มวันนี้</button>
   </header>
 
   <div class="app">
@@ -44,7 +44,7 @@
           </svg>
         </div>
         <div>
-          <h1>LIFE OS 8.0.4</h1>
+          <h1>LIFE OS 8.1.0</h1>
           <span data-i18n="brandSubtitle">Local Executive Operating System</span>
         </div>
       </div>
@@ -68,29 +68,17 @@
       </section>
 
       <section class="side-card">
-        <div class="card-head"><span data-i18n="recoveryStatus">Recovery Status</span><span data-i18n="thisMorning">This morning</span></div>
+        <div class="card-head"><span>Workout Readiness</span><span>Quick control</span></div>
         <div class="side-body">
           <div class="recovery-grid">
             <div>
               <div class="score-xl"><span id="sleepScore">--</span><small id="sleepScoreSmall"></small></div>
-              <strong id="recoveryLabel" class="status-dot unknown">Log sleep</strong>
+              <strong id="recoveryLabel" class="status-dot unknown">Recovery</strong>
             </div>
-            <div class="small-muted" data-i18n="recoveryHelp">Workout engine uses sleep to choose strength, moderate work, or recovery movement.</div>
+            <div class="small-muted">Sleep tracking is now handled in ChatGPT. Life OS keeps only a simple workout override here.</div>
           </div>
 
-          <form class="sleep-form" id="sleepForm">
-            <label><span data-i18n="totalSleepHours">Total sleep hours</span>
-              <input id="sleepHours" type="number" min="0" max="14" step="0.1" placeholder="7.2">
-            </label>
-            <label><span data-i18n="deepSleep">Deep sleep %</span>
-              <input id="deepSleep" type="number" min="0" max="100" step="1" placeholder="18">
-            </label>
-            <label><span data-i18n="remSleep">REM %</span>
-              <input id="remSleep" type="number" min="0" max="100" step="1" placeholder="22">
-            </label>
-            <label><span data-i18n="wakeCount">Wake count</span>
-              <input id="wakeCount" type="number" min="0" max="20" step="1" placeholder="1">
-            </label>
+          <form class="sleep-form readiness-form" id="sleepForm">
             <label class="wide"><span data-i18n="workoutOverride">Workout override</span>
               <select id="workoutOverride">
                 <option value="auto" data-i18n="autoRecovery">Auto from recovery</option>
@@ -161,18 +149,13 @@
       <section class="browser-command-section" id="browserCommandSection">
         <div class="panel browser-command-panel">
           <div class="browser-command-copy">
-            <span class="eyebrow">Browser Quick Command</span>
+            <span class="eyebrow">คำสั่งด่วนวันนี้</span>
             <h3 id="browserCommandTitle">Open Life OS and act immediately</h3>
             <p id="browserCommandDetail">Your next action appears here.</p>
           </div>
           <div class="browser-command-metrics" id="browserCommandMetrics"></div>
-          <div class="browser-command-actions">
-            <button class="primary-btn" data-browser-action="generate" type="button">Generate Today</button>
-            <button class="soft-btn" data-browser-action="teach" type="button">Teach Me</button>
-            <button class="soft-btn" data-browser-action="drive" type="button">Drive Lesson</button>
-            <button class="ghost-btn" data-browser-action="brief" type="button">Morning Brief</button>
-            <button class="ghost-btn" data-browser-action="details" id="mobileDetailsToggle" type="button">ดูรายละเอียดทั้งหมด</button>
-          </div>
+          <div class="browser-top-three" id="browserTopThree"></div>
+          <div class="browser-command-actions" id="browserCommandActions"></div>
         </div>
       </section>
 
@@ -248,41 +231,19 @@
             <button class="primary-btn" id="nightReviewBtn" type="button" data-i18n="nightReview">Night Review</button>
           </div>
         </section>
-      </section>
 
-      <section class="sleep-dashboard" id="sleepSection">
-        <button class="mobile-accordion-toggle" data-accordion-toggle="health" type="button">
-          <span>Health</span>
-          <b id="healthAccordionSummary">Sleep, recovery, trends, manual sleep log</b>
-        </button>
-        <section class="panel sleep-panel wide">
-          <div class="panel-title">
-            <span>Sleep Summary</span>
-            <small>Score · recovery · today fix</small>
-          </div>
-          <div id="sleepOptimization"></div>
-        </section>
-
-        <button class="mobile-accordion-toggle sleep-detail-toggle" data-accordion-toggle="sleepDetail" type="button">
-          <span>Sleep Detail</span>
-          <b>Trend, debt, habits, recovery score, streak, weekly summary</b>
-        </button>
-
-        <section class="panel sleep-panel wide sleep-detail-panel">
-          <div class="panel-title">
-            <span>Sleep Intelligence</span>
-            <small>Trend · debt · habits · recovery · streak</small>
-          </div>
-          <div id="sleepIntelligence"></div>
-        </section>
-
-        <section class="panel sleep-panel wide">
-          <div class="panel-title">
-            <span>Manual Sleep Log</span>
-            <small>JSON/localStorage only</small>
-          </div>
-          <button class="soft-btn" id="toggleSleepLogForm" type="button">เพิ่มข้อมูลการนอนจากรูปแคป</button>
-          <div id="sleepLogFormWrap" class="sleep-log-form-wrap"></div>
+        <section class="panel weekly-review-panel">
+          <div class="panel-title"><span>Weekly Operating Review</span><small>6 questions · Sunday reset</small></div>
+          <form class="weekly-review-form" id="weeklyOperatingReviewForm">
+            <label>Health ดีขึ้นไหม?<textarea name="health" rows="2"></textarea></label>
+            <label>Sales pipeline โตไหม?<textarea name="sales" rows="2"></textarea></label>
+            <label>AI skill โตไหม?<textarea name="ai" rows="2"></textarea></label>
+            <label>Family time จริงไหม?<textarea name="family" rows="2"></textarea></label>
+            <label>เงินลงทุนยังมีวินัยไหม?<textarea name="finance" rows="2"></textarea></label>
+            <label>อะไรควรหยุดทำ?<textarea name="stop" rows="2"></textarea></label>
+            <button class="primary-btn" type="submit">บันทึก Weekly Review</button>
+          </form>
+          <div class="brief-output" id="weeklyReviewOutput"></div>
         </section>
       </section>
 
@@ -348,11 +309,11 @@
   </div>
 
   <nav class="mobile-bottom-nav" aria-label="Mobile navigation">
-    <a href="#nowSection" data-i18n="navNow">Now</a>
-    <a href="#learnSection" data-open-accordion="learn" data-i18n="navLearn">Learn</a>
-    <a href="#sleepSection" data-open-accordion="health">Health</a>
-    <a href="#familyCard" data-open-accordion="learn" data-i18n="navFamily">Family</a>
-    <a href="#settingsSection" data-open-accordion="settings" data-i18n="settings">Settings</a>
+    <a href="#browserCommandSection">ตอนนี้</a>
+    <a href="#learnSection" data-open-accordion="learn">เรียน</a>
+    <a href="#salesCard" data-open-accordion="learn">งานขาย</a>
+    <a href="#familyCard" data-open-accordion="learn">ครอบครัว</a>
+    <a href="#settingsSection" data-open-accordion="settings">ตั้งค่า</a>
   </nav>
 
   <script src="src/roadmaps.generated.js"></script>

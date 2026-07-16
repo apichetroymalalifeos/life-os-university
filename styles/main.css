@@ -510,7 +510,7 @@ textarea {
 
 .browser-command-panel {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(240px, .7fr) auto;
+  grid-template-columns: minmax(0, 1.1fr) minmax(220px, .6fr) minmax(220px, .7fr) auto;
   gap: 14px;
   align-items: center;
   padding: 14px;
@@ -535,11 +535,11 @@ textarea {
 
 .browser-command-metrics {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
+  gap: 7px;
 }
 
-.browser-mini-metric {
+.browser-mini-metric,
+.autopilot-line {
   min-width: 0;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -547,7 +547,8 @@ textarea {
   background: rgba(255, 255, 255, .035);
 }
 
-.browser-mini-metric span {
+.browser-mini-metric span,
+.autopilot-line span {
   display: block;
   color: var(--muted);
   font-size: 10px;
@@ -556,7 +557,8 @@ textarea {
   text-transform: uppercase;
 }
 
-.browser-mini-metric b {
+.browser-mini-metric b,
+.autopilot-line b {
   display: block;
   overflow: hidden;
   margin-top: 4px;
@@ -564,6 +566,113 @@ textarea {
   line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.autopilot-line b {
+  white-space: normal;
+}
+
+.browser-top-three {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid rgba(124, 227, 139, .2);
+  border-radius: var(--radius);
+  background: rgba(124, 227, 139, .055);
+}
+
+.browser-top-three:empty {
+  display: none;
+}
+
+.browser-top-three > span {
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.browser-top-three p {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  gap: 7px;
+  align-items: center;
+  margin: 0;
+  color: var(--soft);
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.browser-top-three b {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--green-soft);
+  color: var(--green);
+  font-size: 11px;
+}
+
+.browser-top-three small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.mission-control-strip {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.mission-control-strip em {
+  min-width: 0;
+  padding: 7px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--soft);
+  font-size: 10px;
+  font-style: normal;
+  line-height: 1.25;
+  background: rgba(255, 255, 255, .035);
+}
+
+.mission-control-strip strong {
+  display: block;
+  color: var(--green);
+  font-size: 10px;
+}
+
+.failure-alerts {
+  display: grid;
+  gap: 3px;
+  margin-top: 6px;
+  padding: 8px;
+  border: 1px solid rgba(240, 165, 50, .35);
+  border-radius: 7px;
+  background: rgba(240, 165, 50, .08);
+}
+
+.failure-alerts.clear {
+  border-color: rgba(124, 227, 139, .28);
+  background: rgba(124, 227, 139, .07);
+}
+
+.failure-alerts strong {
+  color: var(--amber);
+  font-size: 11px;
+}
+
+.failure-alerts.clear strong {
+  color: var(--green);
+}
+
+.failure-alerts small {
+  color: var(--soft);
+  font-size: 11px;
+  line-height: 1.3;
 }
 
 .browser-command-actions {
@@ -574,6 +683,30 @@ textarea {
 
 .browser-command-actions button {
   min-height: 42px;
+}
+
+.browser-command-actions .one-button {
+  grid-column: 1 / -1;
+  min-height: 54px;
+  font-size: 15px;
+}
+
+.weekly-review-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.weekly-review-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--soft);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.weekly-review-form textarea {
+  min-height: 74px;
 }
 
 .metric {
@@ -1859,6 +1992,19 @@ textarea {
     padding: 16px;
   }
 
+  .main {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .browser-command-section {
+    order: -2;
+  }
+
+  .top-shell {
+    order: -1;
+  }
+
   .mission-grid,
   .browser-command-metrics,
   .browser-command-actions,
@@ -1887,6 +2033,7 @@ textarea {
     .life-balance-head,
     .weekend-settings-form,
     .ceo-review-form,
+    .weekly-review-form,
     .today-learning-summary,
     .checklist,
     .stat-strip,
@@ -1904,6 +2051,26 @@ textarea {
 
   .browser-mini-metric b {
     white-space: normal;
+  }
+
+  .browser-top-three p {
+    grid-template-columns: 20px minmax(0, 1fr);
+  }
+
+  .browser-top-three small {
+    grid-column: 2;
+  }
+
+  .mission-control-strip {
+    display: none;
+  }
+
+  .failure-alerts {
+    padding: 7px;
+  }
+
+  .failure-alerts small {
+    font-size: 10px;
   }
 
   .mobile-accordion-toggle {
@@ -1953,6 +2120,8 @@ textarea {
 
   body:not(.mobile-details-open) #executiveSection,
   body:not(.mobile-details-open) #weekendSection,
+  body:not(.mobile-details-open) #progressSection,
+  body:not(.mobile-details-open) #nowSection,
   body:not(.mobile-details-open) #learnSection,
   body:not(.mobile-details-open) #sleepSection,
   body:not(.mobile-details-open) #settingsSection,

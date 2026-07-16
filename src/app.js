@@ -8,7 +8,7 @@
   const roadmaps = window.LIFE_OS_ROADMAPS;
   let state = Storage.load();
   let pwaStatusMessage = "";
-  const APP_VERSION = "8.0.4";
+  const APP_VERSION = "8.1.0";
   const LIFE_OS_CACHE_PREFIX = "life-os-university-pwa-";
   let pendingServiceWorker = null;
   let updateVersionInfo = null;
@@ -555,38 +555,58 @@
     const mode = Engine.modeForDate?.(state) || "production";
     const focus = today.dailyFocus?.focus || today.currentFaculty || state.university.currentFaculty;
     const lesson = Engine.lessonForToday(state, roadmaps, focus);
+    const brief = Engine.buildExecutiveBrief(state, roadmaps);
+    const topThree = (brief.priorities || []).slice(0, 3);
+    const risks = (brief.radar || []).slice(0, 2);
+    const day = Engine.dayState(state);
+    const started = Boolean(day.autopilotStarted);
+    const topThreeText = topThree.map((priority, index) => `${index + 1}. ${priority.title}`).join(" · ") || "1. กด Start My Day";
+    const mainWhy = topThree[0]?.why || current.detail || "This is the highest-leverage next action for today.";
+    const cost = risks[0]?.title
+      ? `${risks[0].title}: ${risks[0].why || "ปล่อยไว้จะทำให้ rhythm วันนี้เสีย"}`
+      : "ถ้าไม่ทำ Top 3 วันนี้ งานสำคัญจะเลื่อนไปสะสมวันถัดไป";
 
-    $("#browserCommandTitle").textContent = current.title;
-    $("#browserCommandDetail").textContent = current.mission;
+    $("#browserCommandTitle").textContent = "Life OS Autopilot";
+    $("#browserCommandDetail").textContent = day.autopilotStatus || "เปิดมาแล้วทำตาม 5 บรรทัดนี้ ไม่ต้องจัดระเบียบชีวิตใหม่ทุกเช้า";
     $("#browserCommandMetrics").innerHTML = [
-      ["Mode", Engine.modeLabel?.(mode) || mode],
-      ["Next", `${next.start} ${next.title}`],
-      ["Learning", `Day ${lesson.day} · ${facultyLabel(focus)}`],
-      ["Progress", `${daily.percent}% today`]
+      ["NOW", current.mission],
+      ["WHY", mainWhy],
+      ["COST IF NOT DONE", cost],
+      ["TOP 3", topThreeText],
+      ["START", started ? `Autopilot running · ${daily.percent}% วันนี้` : "กด Start My Day เพื่อสร้างแผนและเริ่มวัน"]
     ].map(([label, value]) => `
-      <div class="browser-mini-metric">
+      <div class="autopilot-line">
         <span>${escapeHtml(label)}</span>
         <b>${escapeHtml(value)}</b>
       </div>
     `).join("");
-    const detailsToggle = $("#mobileDetailsToggle");
-    if (detailsToggle) {
-      detailsToggle.textContent = state.settings.mobileDetailsOpen ? "ซ่อนรายละเอียด" : "ดูรายละเอียดทั้งหมด";
+    const topThreeNode = $("#browserTopThree");
+    if (topThreeNode) {
+      topThreeNode.innerHTML = "";
+    }
+    const actions = $("#browserCommandActions");
+    if (actions) {
+      actions.innerHTML = started ? `
+        <button class="soft-btn" data-browser-action="teach" type="button">สอนฉัน</button>
+        <button class="soft-btn" data-browser-action="drive" type="button">บทเรียนขับรถ</button>
+        <button class="primary-btn" data-browser-action="complete-focus" type="button">เสร็จแล้ว</button>
+        <button class="ghost-btn" data-browser-action="details" id="mobileDetailsToggle" type="button">${state.settings.mobileDetailsOpen ? "ซ่อนรายละเอียด" : "ดูรายละเอียดทั้งหมด"}</button>
+      ` : `
+        <button class="primary-btn one-button" data-browser-action="start" type="button">Start My Day</button>
+      `;
     }
   }
 
   function renderMobileAccordions() {
-    state.settings.mobileAccordions ||= { learn: false, health: false, settings: false };
+    state.settings.mobileAccordions ||= { learn: false, settings: false };
     const map = {
       learn: "#learnSection",
-      health: "#sleepSection",
       settings: "#settingsSection"
     };
     Object.entries(map).forEach(([key, selector]) => {
       const node = $(selector);
       if (node) node.classList.toggle("accordion-open", Boolean(state.settings.mobileAccordions[key]));
     });
-    $("#sleepSection")?.classList.toggle("sleep-detail-open", Boolean(state.settings.mobileAccordions.sleepDetail));
   }
 
   function greetingForHour(hour) {
@@ -642,10 +662,10 @@
 
   function renderSleepForm() {
     const sleep = state.sleep;
-    $("#sleepHours").value = sleep.hours ?? "";
-    $("#deepSleep").value = sleep.deep ?? "";
-    $("#remSleep").value = sleep.rem ?? "";
-    $("#wakeCount").value = sleep.wakes ?? "";
+    if ($("#sleepHours")) $("#sleepHours").value = sleep.hours ?? "";
+    if ($("#deepSleep")) $("#deepSleep").value = sleep.deep ?? "";
+    if ($("#remSleep")) $("#remSleep").value = sleep.rem ?? "";
+    if ($("#wakeCount")) $("#wakeCount").value = sleep.wakes ?? "";
     $("#languageSelect").value = lang();
     $("#workoutOverride").value = state.settings.workoutOverride || "auto";
   }
@@ -850,6 +870,21 @@
     const today = Engine.dayState(state);
     $("#briefOutput").textContent = localBrief(today.brief) || t("briefEmpty");
     $("#nightReviewText").value = today.review || "";
+  }
+
+  function renderWeeklyOperatingReview() {
+    const form = $("#weeklyOperatingReviewForm");
+    const output = $("#weeklyReviewOutput");
+    if (!form || !output) return;
+    const id = Engine.weekId?.() || "current-week";
+    const review = state.executive.weeklyOperatingReviews?.[id] || {};
+    ["health", "sales", "ai", "family", "finance", "stop"].forEach(field => {
+      const input = form.elements[field];
+      if (input) input.value = review[field] || "";
+    });
+    output.textContent = review.savedAt
+      ? `บันทึกแล้ว ${new Date(review.savedAt).toLocaleString("th-TH")} · Health / Sales / AI / Family / Finance / Stop`
+      : "ยังไม่ได้บันทึก Weekly Operating Review สัปดาห์นี้";
   }
 
   function executiveMeta(item) {
@@ -1571,6 +1606,18 @@
     $("#universityCard")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
+  function startMyDayFlow() {
+    Engine.repairProgress?.(state);
+    const today = Engine.generateToday(state, roadmaps);
+    today.autopilotStarted = true;
+    today.generateStatus = "Autopilot พร้อมแล้ว: ทำ Top 3 วันนี้ตามลำดับ";
+    today.teachPrompt = Engine.buildTeachMePrompt(state, roadmaps);
+    state.settings.mobileDetailsOpen = false;
+    Storage.save(state);
+    renderAll();
+    $("#browserCommandSection")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   async function copyTeachPrompt(prompt) {
     try {
       if (navigator.clipboard && window.isSecureContext) {
@@ -1770,7 +1817,8 @@
       saveAndRender();
     });
 
-    $("#sleepForm").addEventListener("input", () => {
+    $("#sleepForm")?.addEventListener("input", () => {
+      if (!$("#sleepHours")) return;
       state.sleep = {
         hours: $("#sleepHours").value,
         deep: $("#deepSleep").value,
@@ -1787,7 +1835,7 @@
     });
 
     $("#generateTodayBtn").addEventListener("click", generateTodayFlow);
-    $("#mobileGenerateBtn").addEventListener("click", generateTodayFlow);
+    $("#mobileGenerateBtn").addEventListener("click", startMyDayFlow);
     $("#refreshLessonDataBtn")?.addEventListener("click", () => {
       Engine.repairProgress?.(state);
       Engine.generateToday(state, roadmaps);
@@ -1940,9 +1988,17 @@
           saveAndRender();
           return;
         }
-        if (action === "generate") {
-          state.settings.mobileDetailsOpen = true;
-          generateTodayFlow();
+        if (action === "start" || action === "generate") {
+          startMyDayFlow();
+          return;
+        }
+        if (action === "complete-focus") {
+          const today = Engine.ensureToday(state, roadmaps);
+          const focusTrack = today.dailyFocus?.focus || today.currentFaculty || state.university.currentFaculty;
+          Engine.completeTrack(state, focusTrack);
+          const progress = Engine.progressFor(state, focusTrack);
+          Engine.dayState(state).autopilotStatus = `${facultyLabel(focusTrack)} เสร็จแล้ว · ถัดไป Day ${progress.day || progress.currentDay || "-"}`;
+          saveAndRender();
           return;
         }
         if (action === "brief") {
@@ -2062,6 +2118,7 @@
       }
 
       if (complete) {
+        const track = Engine.normalizeFacultyId?.(complete.dataset.complete) || complete.dataset.complete;
         Engine.completeTrack(state, complete.dataset.complete);
         const task = complete.dataset.completeTask;
         if (task) {
@@ -2069,6 +2126,8 @@
           delete day.tasks[complete.dataset.complete];
           day.tasks[task] = true;
         }
+        const progress = Engine.progressFor(state, track);
+        Engine.dayState(state).autopilotStatus = `${track} เสร็จแล้ว · ถัดไป Day ${progress.day || progress.currentDay || "-"}`;
         saveAndRender();
       }
 
@@ -2190,6 +2249,25 @@
         return;
       }
 
+      if (event.target.id === "weeklyOperatingReviewForm") {
+        event.preventDefault();
+        const form = new FormData(event.target);
+        const id = Engine.weekId?.() || "current-week";
+        state.executive.weeklyOperatingReviews ||= {};
+        state.executive.weeklyOperatingReviews[id] = {
+          weekId: id,
+          savedAt: new Date().toISOString(),
+          health: form.get("health") || "",
+          sales: form.get("sales") || "",
+          ai: form.get("ai") || "",
+          family: form.get("family") || "",
+          finance: form.get("finance") || "",
+          stop: form.get("stop") || ""
+        };
+        saveAndRender();
+        return;
+      }
+
       if (event.target.id !== "manualSleepLogForm") return;
       event.preventDefault();
       const log = Sleep.buildLogFromForm(event.target);
@@ -2249,9 +2327,7 @@
     renderLessons();
     renderChecklist();
     renderBriefReview();
-    renderSleepOptimization();
-    renderSleepIntelligence();
-    renderSleepLogForm();
+    renderWeeklyOperatingReview();
     renderNotificationStatus();
     renderPwaStatus();
     renderAppVersion();
