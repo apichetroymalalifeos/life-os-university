@@ -8,7 +8,7 @@
   const roadmaps = window.LIFE_OS_ROADMAPS;
   let state = Storage.load();
   let pwaStatusMessage = "";
-  const APP_VERSION = "8.1.0";
+  const APP_VERSION = "8.2.0";
   const LIFE_OS_CACHE_PREFIX = "life-os-university-pwa-";
   let pendingServiceWorker = null;
   let updateVersionInfo = null;
@@ -550,11 +550,7 @@
     document.body.classList.toggle("mobile-details-open", Boolean(state.settings.mobileDetailsOpen));
     const today = Engine.ensureToday(state, roadmaps);
     const current = localBlock(Engine.getCurrentBlock(new Date(), state));
-    const next = localBlock(Engine.getNextBlock(new Date(), state));
     const daily = Engine.dailyScore(state);
-    const mode = Engine.modeForDate?.(state) || "production";
-    const focus = today.dailyFocus?.focus || today.currentFaculty || state.university.currentFaculty;
-    const lesson = Engine.lessonForToday(state, roadmaps, focus);
     const brief = Engine.buildExecutiveBrief(state, roadmaps);
     const topThree = (brief.priorities || []).slice(0, 3);
     const risks = (brief.radar || []).slice(0, 2);
@@ -565,9 +561,10 @@
     const cost = risks[0]?.title
       ? `${risks[0].title}: ${risks[0].why || "ปล่อยไว้จะทำให้ rhythm วันนี้เสีย"}`
       : "ถ้าไม่ทำ Top 3 วันนี้ งานสำคัญจะเลื่อนไปสะสมวันถัดไป";
+    const doNot = buildDoNotDoToday(current, brief);
 
     $("#browserCommandTitle").textContent = "Life OS Autopilot";
-    $("#browserCommandDetail").textContent = day.autopilotStatus || "เปิดมาแล้วทำตาม 5 บรรทัดนี้ ไม่ต้องจัดระเบียบชีวิตใหม่ทุกเช้า";
+    $("#browserCommandDetail").textContent = day.autopilotStatus || `เปิดมาแล้วทำตาม 5 บรรทัดนี้${doNot.length ? ` · วันนี้ห้าม: ${doNot.join(" / ")}` : ""}`;
     $("#browserCommandMetrics").innerHTML = [
       ["NOW", current.mission],
       ["WHY", mainWhy],
@@ -592,9 +589,29 @@
         <button class="primary-btn" data-browser-action="complete-focus" type="button">เสร็จแล้ว</button>
         <button class="ghost-btn" data-browser-action="details" id="mobileDetailsToggle" type="button">${state.settings.mobileDetailsOpen ? "ซ่อนรายละเอียด" : "ดูรายละเอียดทั้งหมด"}</button>
       ` : `
-        <button class="primary-btn one-button" data-browser-action="start" type="button">Start My Day</button>
+        <button class="primary-btn one-button" data-browser-action="start" type="button">เริ่มวันนี้</button>
       `;
     }
+  }
+
+  function buildDoNotDoToday(current, brief) {
+    const recovery = Engine.recoveryStatus(state);
+    const mode = Engine.modeForDate?.(state) || "production";
+    const drivingIds = ["schoolDropoff", "commute", "visits", "visits2", "familyPickup"];
+    const warnings = [];
+    if (drivingIds.includes(current.id)) {
+      warnings.push("ไม่อ่าน ไม่พิมพ์ ไม่ดูกราฟระหว่างขับรถ");
+    }
+    if (recovery.level === "poor") {
+      warnings.push("ไม่ฝึกหนัก ให้เดินเบา/ยืดเหยียดเท่านั้น");
+    }
+    if (mode === "production") {
+      warnings.push("ไม่เปิดรายละเอียดลึกก่อนทำ Top 3");
+    }
+    if ((brief?.dataQuality?.missing || []).length) {
+      warnings.push("ไม่ตัดสินใจจากข้อมูลที่ยังขาด");
+    }
+    return warnings.slice(0, 2);
   }
 
   function renderMobileAccordions() {
@@ -685,14 +702,15 @@
     const focus = cards.find(card => card.faculty === today.dailyFocus?.focus) || cards[0];
     const totalMinutes = cards.reduce((sum, card) => sum + Number(card.estimatedMinutes || 0), 0);
     $("#universityCard").innerHTML = `
-      <div class="panel-title">${t("university")} <small>Daily Focus · 6 faculties</small></div>
+      <div class="panel-title">${t("university")} <small>Focus first · details folded</small></div>
       <div class="module-body university-body">
         ${today.generateStatus ? `<div class="notice good">${today.generateStatus}</div>` : ""}
         <div class="today-learning-summary">
           <div>
             <span class="eyebrow">${lang() === "th" ? "วันนี้ต้องเรียน" : "Today's Faculty"}</span>
             <h3>${facultyIcon(focus?.faculty)} ${facultyLabel(focus?.faculty)} · ${focus?.lesson.title || ""}</h3>
-            <p>${t("totalLearningTime")}: ${totalMinutes} min · ${t("nextAction")}: ${focus?.nextAction || ""}</p>
+            <p>${t("day")} ${focus?.day || "-"} · ${t("availableTime")}: ${focus?.estimatedMinutes || today.availableMinutes || 25} min</p>
+            <p><b>${t("nextAction")}:</b> ${focus?.nextAction || ""}</p>
           </div>
           <label class="time-select">${t("timeQuestion")}
             <select id="learningTimeSelect">
@@ -705,44 +723,47 @@
           <button class="soft-btn" id="driveLessonBtn" type="button">🎧 ${t("driveLesson")}</button>
           <a class="link-btn" href="https://chatgpt.com/" target="_blank" rel="noopener">${t("openChatGPT")}</a>
         </div>
-        <div class="faculty-card-grid">
-          ${cards.map(card => {
-            const done = Boolean(Engine.dayState(state).tasks[card.faculty]);
-            const skipped = Boolean(Engine.dayState(state).skips[card.faculty]);
-            return `
-              <article class="faculty-card ${card.status}">
-                <div class="faculty-card-head">
-                  <span class="faculty-icon">${card.icon}</span>
-                  <div>
-                    <h3>${card.name}</h3>
-                    <p>${card.faculty}</p>
+        <details class="faculty-detail-drawer">
+          <summary>ดูรายละเอียด 6 คณะ · ${totalMinutes} นาทีรวม</summary>
+          <div class="faculty-card-grid">
+            ${cards.map(card => {
+              const done = Boolean(Engine.dayState(state).tasks[card.faculty]);
+              const skipped = Boolean(Engine.dayState(state).skips[card.faculty]);
+              return `
+                <article class="faculty-card ${card.status}">
+                  <div class="faculty-card-head">
+                    <span class="faculty-icon">${card.icon}</span>
+                    <div>
+                      <h3>${card.name}</h3>
+                      <p>${card.faculty}</p>
+                    </div>
+                    <span class="status-pill">${statusLabel(card.status)}</span>
                   </div>
-                  <span class="status-pill">${statusLabel(card.status)}</span>
-                </div>
-                ${card.error ? `<div class="notice warn">${card.error}</div>` : ""}
-                <div class="field-grid compact">
-                  <div class="field"><span>${t("facultyId")}</span><p>${card.faculty}</p></div>
-                  <div class="field"><span>Status</span><p>${statusLabel(card.status)}</p></div>
-                  <div class="field"><span>${t("day")}</span><p>${card.day}</p></div>
-                  <div class="field"><span>${t("availableTime")}</span><p>${card.estimatedMinutes} min</p></div>
-                </div>
-                <h3>${card.lesson.title}</h3>
-                <p>${card.lesson.learningGoal || ""}</p>
-                <div class="lesson-meta">
-                  <span class="pill">${card.lesson.category || "Metadata"}</span>
-                  ${(card.lesson.keywords || []).slice(0, 3).map(keyword => `<span class="pill">${keyword}</span>`).join("")}
-                </div>
-                <div class="field"><span>Source types</span><p>${(card.lesson.recommendedSourceTypes || []).join(", ") || t("roadmapDataError")}</p></div>
-                <div class="field"><span>${t("nextAction")}</span><p>${card.nextAction}</p></div>
-                <div class="lesson-actions">
-                  <button class="${skipped ? "danger-btn" : "ghost-btn"}" data-skip="${card.faculty}" type="button">${skipped ? t("skipped") : t("skip")}</button>
-                  <button class="primary-btn" data-complete="${card.faculty}" type="button">${done ? t("completedButton") : t("complete")}</button>
-                </div>
-              </article>
-            `;
-          }).join("")}
-        </div>
-        <button class="ghost-btn" id="completeAllTodayBtn" type="button">${t("completeAllToday")}</button>
+                  ${card.error ? `<div class="notice warn">${card.error}</div>` : ""}
+                  <div class="field-grid compact">
+                    <div class="field"><span>${t("facultyId")}</span><p>${card.faculty}</p></div>
+                    <div class="field"><span>Status</span><p>${statusLabel(card.status)}</p></div>
+                    <div class="field"><span>${t("day")}</span><p>${card.day}</p></div>
+                    <div class="field"><span>${t("availableTime")}</span><p>${card.estimatedMinutes} min</p></div>
+                  </div>
+                  <h3>${card.lesson.title}</h3>
+                  <p>${card.lesson.learningGoal || ""}</p>
+                  <div class="lesson-meta">
+                    <span class="pill">${card.lesson.category || "Metadata"}</span>
+                    ${(card.lesson.keywords || []).slice(0, 3).map(keyword => `<span class="pill">${keyword}</span>`).join("")}
+                  </div>
+                  <div class="field"><span>Source types</span><p>${(card.lesson.recommendedSourceTypes || []).join(", ") || t("roadmapDataError")}</p></div>
+                  <div class="field"><span>${t("nextAction")}</span><p>${card.nextAction}</p></div>
+                  <div class="lesson-actions">
+                    <button class="${skipped ? "danger-btn" : "ghost-btn"}" data-skip="${card.faculty}" type="button">${skipped ? t("skipped") : t("skip")}</button>
+                    <button class="primary-btn" data-complete="${card.faculty}" type="button">${done ? t("completedButton") : t("complete")}</button>
+                  </div>
+                </article>
+              `;
+            }).join("")}
+          </div>
+          <button class="ghost-btn" id="completeAllTodayBtn" type="button">${t("completeAllToday")}</button>
+        </details>
       </div>
     `;
   }
@@ -875,7 +896,11 @@
   function renderWeeklyOperatingReview() {
     const form = $("#weeklyOperatingReviewForm");
     const output = $("#weeklyReviewOutput");
+    const panel = $("#weeklyReviewPanel");
     if (!form || !output) return;
+    const isSunday = new Date().getDay() === 0;
+    if (panel) panel.classList.toggle("hidden", !isSunday);
+    if (!isSunday) return;
     const id = Engine.weekId?.() || "current-week";
     const review = state.executive.weeklyOperatingReviews?.[id] || {};
     ["health", "sales", "ai", "family", "finance", "stop"].forEach(field => {
@@ -2011,6 +2036,8 @@
         }
         if (action === "teach" || action === "drive") {
           state.settings.mobileDetailsOpen = true;
+          state.settings.mobileAccordions ||= {};
+          state.settings.mobileAccordions.learn = true;
           const today = Engine.ensureToday(state, roadmaps);
           const prompt = action === "drive"
             ? Engine.buildDriveLessonPrompt(state, roadmaps)

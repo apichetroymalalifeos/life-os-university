@@ -1548,6 +1548,10 @@ textarea {
   flex-direction: column;
 }
 
+#universityCard {
+  min-height: auto;
+}
+
 .lesson-card .module-body {
   display: flex;
   flex: 1;
@@ -1640,6 +1644,25 @@ textarea {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+
+.faculty-detail-drawer {
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, .025);
+}
+
+.faculty-detail-drawer summary {
+  cursor: pointer;
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 950;
+  list-style-position: inside;
+}
+
+.faculty-detail-drawer .faculty-card-grid {
+  margin-top: 12px;
 }
 
 .faculty-card {
@@ -1840,6 +1863,30 @@ textarea {
   padding: 15px;
 }
 
+.settings-group {
+  grid-column: 1 / -1;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, .025);
+}
+
+.settings-group summary {
+  min-height: 36px;
+  cursor: pointer;
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 950;
+  list-style-position: inside;
+}
+
+.settings-group-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
 .setting-card {
   display: grid;
   gap: 10px;
@@ -2037,7 +2084,8 @@ textarea {
     .today-learning-summary,
     .checklist,
     .stat-strip,
-    .settings-grid {
+    .settings-grid,
+    .settings-group-grid {
     grid-template-columns: 1fr;
   }
 

@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Life OS">
-  <title>Life OS University 8.1.0</title>
+  <title>Life OS University 8.2.0</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23090d0c'/%3E%3Cpath d='M16 7l9 5v8l-9 5-9-5v-8l9-5z' fill='none' stroke='%237ce38b' stroke-width='2'/%3E%3Cpath d='M16 12v8M12 16h8' stroke='%237ce38b' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
@@ -44,7 +44,7 @@
           </svg>
         </div>
         <div>
-          <h1>LIFE OS 8.1.0</h1>
+          <h1>LIFE OS 8.2.0</h1>
           <span data-i18n="brandSubtitle">Local Executive Operating System</span>
         </div>
       </div>
@@ -232,7 +232,7 @@
           </div>
         </section>
 
-        <section class="panel weekly-review-panel">
+        <section class="panel weekly-review-panel" id="weeklyReviewPanel">
           <div class="panel-title"><span>Weekly Operating Review</span><small>6 questions · Sunday reset</small></div>
           <form class="weekly-review-form" id="weeklyOperatingReviewForm">
             <label>Health ดีขึ้นไหม?<textarea name="health" rows="2"></textarea></label>
@@ -250,58 +250,80 @@
       <section class="grid settings-grid-wrap" id="settingsSection">
         <button class="mobile-accordion-toggle" data-accordion-toggle="settings" type="button">
           <span>Settings</span>
-          <b id="settingsAccordionSummary">Updates, backup, PWA, debug, weekend settings</b>
+          <b id="settingsAccordionSummary">ใช้งานประจำ · แก้ปัญหา · Developer</b>
         </button>
         <section class="panel">
           <div class="panel-title"><span data-i18n="settings">Settings</span><small data-i18n="freeLocalOnly">Free, local only</small></div>
           <div class="settings-grid">
-            <div class="setting-card">
-              <strong data-i18n="localProgress">Local Progress</strong>
-              <p data-i18n="localProgressNote">Progress is stored locally on this device. Future sync can be added later.</p>
-              <p class="small-muted" id="pwaStatus">PWA status will appear here.</p>
-              <p class="small-muted" id="appVersionText">Life OS University v--</p>
-              <button class="soft-btn" id="exportLocalStorageBtn" type="button">Export Backup</button>
-              <button class="ghost-btn" id="resetDemoDataBtn" type="button">Reset Demo Data</button>
-              <p class="small-muted" id="settingsActionStatus"></p>
-            </div>
-            <div class="setting-card">
-              <strong data-i18n="updates">Updates</strong>
-              <p data-i18n="iphoneUpdateHelp">ถ้าใช้ iPhone และยังเห็นเวอร์ชันเก่า หลังจากกดอัปเดตแล้ว ให้ปิดแอป Life OS จาก App Switcher แล้วเปิดใหม่อีกครั้ง ถ้ายังไม่หาย ให้ลบไอคอนออกจาก Home Screen แล้ว Add to Home Screen ใหม่</p>
-              <button class="soft-btn" id="checkUpdateBtn" type="button" data-i18n="checkUpdates">ตรวจสอบอัปเดต</button>
-              <button class="ghost-btn" id="forceFreshBtn" type="button" data-i18n="forceFreshReload">ล้างแคชและโหลดใหม่</button>
-              <p class="small-muted" data-i18n="forceFreshHint">ใช้ปุ่มนี้เมื่อ iPhone ยังเปิดเวอร์ชันเก่าหลัง publish แล้ว</p>
-              <p class="small-muted" id="updateStatusText"></p>
-            </div>
-            <div class="setting-card">
-              <strong data-i18n="notifications">Notifications</strong>
-              <p data-i18n="notificationHttpsNote">Browser notifications work reliably only on HTTPS or localhost. GitHub Pages supports HTTPS for free.</p>
-              <button class="soft-btn" id="notificationPermissionBtn" type="button" data-i18n="enableReminderPermission">Enable reminder permission</button>
-              <div class="notification-times">
-                <span><b>07:00</b> <em data-i18n="morningReminder">Morning reminder</em></span>
-                <span><b>20:00</b> <em data-i18n="eveningReviewReminder">Evening review</em></span>
-                <span><b>20:30</b> <em data-i18n="windDownReminder">Wind down</em></span>
+            <details class="settings-group" open>
+              <summary>ใช้งานประจำ</summary>
+              <div class="settings-group-grid">
+                <div class="setting-card">
+                  <strong data-i18n="localProgress">Local Progress</strong>
+                  <p data-i18n="localProgressNote">Progress is stored locally on this device. Future sync can be added later.</p>
+                  <p class="small-muted" id="pwaStatus">PWA status will appear here.</p>
+                  <p class="small-muted" id="appVersionText">Life OS University v--</p>
+                  <button class="soft-btn" id="exportLocalStorageBtn" type="button">Export Backup</button>
+                  <p class="small-muted" id="settingsActionStatus"></p>
+                </div>
+                <div class="setting-card">
+                  <strong data-i18n="updates">Updates</strong>
+                  <button class="soft-btn" id="checkUpdateBtn" type="button" data-i18n="checkUpdates">ตรวจสอบอัปเดต</button>
+                  <button class="ghost-btn" id="forceFreshBtn" type="button" data-i18n="forceFreshReload">ล้างแคชและโหลดใหม่</button>
+                  <p class="small-muted" data-i18n="forceFreshHint">ใช้ปุ่มนี้เมื่อ iPhone ยังเปิดเวอร์ชันเก่าหลัง publish แล้ว</p>
+                  <p class="small-muted" id="updateStatusText"></p>
+                </div>
               </div>
-              <p class="small-muted" id="notificationStatus"></p>
-            </div>
-            <div class="setting-card progress-debug-card">
-              <strong>Progress Debug</strong>
-              <p class="small-muted">ตรวจ currentDay, completedDays, skippedDays และ streak ของแต่ละคณะ</p>
-              <div class="button-row">
-                <button class="soft-btn" id="refreshLessonDataBtn" type="button">รีเฟรชข้อมูลบทเรียน</button>
-                <button class="ghost-btn" id="repairProgressBtn" type="button">ซ่อม Progress</button>
+            </details>
+            <details class="settings-group">
+              <summary>แก้ปัญหา / มือถือ</summary>
+              <div class="settings-group-grid">
+                <div class="setting-card">
+                  <strong data-i18n="notifications">Notifications</strong>
+                  <p data-i18n="notificationHttpsNote">Browser notifications work reliably only on HTTPS or localhost. GitHub Pages supports HTTPS for free.</p>
+                  <button class="soft-btn" id="notificationPermissionBtn" type="button" data-i18n="enableReminderPermission">Enable reminder permission</button>
+                  <div class="notification-times">
+                    <span><b>07:00</b> <em data-i18n="morningReminder">Morning reminder</em></span>
+                    <span><b>20:00</b> <em data-i18n="eveningReviewReminder">Evening review</em></span>
+                    <span><b>20:30</b> <em data-i18n="windDownReminder">Wind down</em></span>
+                  </div>
+                  <p class="small-muted" id="notificationStatus"></p>
+                </div>
+                <div class="setting-card mobile-qa-card">
+                  <strong>Real Mobile QA Checklist</strong>
+                  <p class="small-muted">เช็กลิสต์สำหรับตรวจ iPhone / PWA / GitHub Pages หลัง publish จริง</p>
+                  <div id="mobileQaChecklist"></div>
+                </div>
+                <div class="setting-card">
+                  <strong>iPhone Update Note</strong>
+                  <p data-i18n="iphoneUpdateHelp">ถ้าใช้ iPhone และยังเห็นเวอร์ชันเก่า หลังจากกดอัปเดตแล้ว ให้ปิดแอป Life OS จาก App Switcher แล้วเปิดใหม่อีกครั้ง ถ้ายังไม่หาย ให้ลบไอคอนออกจาก Home Screen แล้ว Add to Home Screen ใหม่</p>
+                </div>
               </div>
-              <div id="progressDebug"></div>
-            </div>
-            <div class="setting-card mobile-qa-card wide">
-              <strong>Real Mobile QA Checklist</strong>
-              <p class="small-muted">เช็กลิสต์สำหรับตรวจ iPhone / PWA / GitHub Pages หลัง publish จริง</p>
-              <div id="mobileQaChecklist"></div>
-            </div>
-            <div class="setting-card weekend-settings-card wide">
-              <strong>Weekend Settings</strong>
-              <p class="small-muted">ปรับเฉพาะตารางสุดสัปดาห์โดยไม่แตะ learning progress หรือข้อมูลเดิม</p>
-              <div id="weekendSettings"></div>
-            </div>
+            </details>
+            <details class="settings-group developer-settings">
+              <summary>Developer / Maintenance</summary>
+              <div class="settings-group-grid">
+                <div class="setting-card progress-debug-card">
+                  <strong>Progress Debug</strong>
+                  <p class="small-muted">ตรวจ currentDay, completedDays, skippedDays และ streak ของแต่ละคณะ</p>
+                  <div class="button-row">
+                    <button class="soft-btn" id="refreshLessonDataBtn" type="button">รีเฟรชข้อมูลบทเรียน</button>
+                    <button class="ghost-btn" id="repairProgressBtn" type="button">ซ่อม Progress</button>
+                  </div>
+                  <div id="progressDebug"></div>
+                </div>
+                <div class="setting-card weekend-settings-card">
+                  <strong>Weekend Settings</strong>
+                  <p class="small-muted">ปรับเฉพาะตารางสุดสัปดาห์โดยไม่แตะ learning progress หรือข้อมูลเดิม</p>
+                  <div id="weekendSettings"></div>
+                </div>
+                <div class="setting-card">
+                  <strong>Demo Data</strong>
+                  <p class="small-muted">ใช้เฉพาะตอนทดสอบ ไม่ลบ progress จริง</p>
+                  <button class="ghost-btn" id="resetDemoDataBtn" type="button">Reset Demo Data</button>
+                </div>
+              </div>
+            </details>
           </div>
         </section>
       </section>
@@ -309,9 +331,9 @@
   </div>
 
   <nav class="mobile-bottom-nav" aria-label="Mobile navigation">
-    <a href="#browserCommandSection">ตอนนี้</a>
+    <a href="#browserCommandSection">วันนี้</a>
     <a href="#learnSection" data-open-accordion="learn">เรียน</a>
-    <a href="#salesCard" data-open-accordion="learn">งานขาย</a>
+    <a href="#salesCard" data-open-accordion="learn">ขาย</a>
     <a href="#familyCard" data-open-accordion="learn">ครอบครัว</a>
     <a href="#settingsSection" data-open-accordion="settings">ตั้งค่า</a>
   </nav>
