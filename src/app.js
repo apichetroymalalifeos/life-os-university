@@ -8,7 +8,7 @@
   const roadmaps = window.LIFE_OS_ROADMAPS;
   let state = Storage.load();
   let pwaStatusMessage = "";
-  const APP_VERSION = "8.2.0";
+  const APP_VERSION = "8.5.0";
   const LIFE_OS_CACHE_PREFIX = "life-os-university-pwa-";
   let pendingServiceWorker = null;
   let updateVersionInfo = null;
@@ -552,25 +552,29 @@
     const current = localBlock(Engine.getCurrentBlock(new Date(), state));
     const daily = Engine.dailyScore(state);
     const brief = Engine.buildExecutiveBrief(state, roadmaps);
+    const prime = brief.primeMission || {};
+    const todayWin = brief.todayWin || {};
+    const memory = brief.yesterdayMemory || {};
+    const momentum = brief.momentum || {};
+    const reality = Engine.realityCheckFor?.(state) || { energy: "normal", salesLoad: "normal", learningMinutes: 25 };
     const topThree = (brief.priorities || []).slice(0, 3);
-    const risks = (brief.radar || []).slice(0, 2);
+    const overload = (brief.antiOverload || []).slice(0, 2);
     const day = Engine.dayState(state);
     const started = Boolean(day.autopilotStarted);
     const topThreeText = topThree.map((priority, index) => `${index + 1}. ${priority.title}`).join(" · ") || "1. กด Start My Day";
-    const mainWhy = topThree[0]?.why || current.detail || "This is the highest-leverage next action for today.";
-    const cost = risks[0]?.title
-      ? `${risks[0].title}: ${risks[0].why || "ปล่อยไว้จะทำให้ rhythm วันนี้เสีย"}`
-      : "ถ้าไม่ทำ Top 3 วันนี้ งานสำคัญจะเลื่อนไปสะสมวันถัดไป";
+    const mainWhy = todayWin.why || prime.why || topThree[0]?.why || current.detail || "This is the highest-leverage next action for today.";
+    const cost = prime.cost || "ถ้าไม่ปิด win เดียววันนี้ งานสำคัญจะเลื่อนไปสะสมวันถัดไป";
     const doNot = buildDoNotDoToday(current, brief);
+    const overloadText = overload.map(item => item.action).join(" / ");
 
-    $("#browserCommandTitle").textContent = "Life OS Autopilot";
-    $("#browserCommandDetail").textContent = day.autopilotStatus || `เปิดมาแล้วทำตาม 5 บรรทัดนี้${doNot.length ? ` · วันนี้ห้าม: ${doNot.join(" / ")}` : ""}`;
+    $("#browserCommandTitle").textContent = todayWin.completedAt ? "วันนี้ชนะแล้ว" : "Today Win";
+    $("#browserCommandDetail").textContent = day.autopilotStatus || brief.morningHook || `วันนี้ห้าม: ${doNot.join(" / ") || "ไม่เปิดรายละเอียดก่อนเริ่ม"}${overloadText ? ` · Guardrail: ${overloadText}` : ""}`;
     $("#browserCommandMetrics").innerHTML = [
-      ["NOW", current.mission],
+      ["วันนี้ชนะถ้า", todayWin.title || prime.title || current.mission],
       ["WHY", mainWhy],
       ["COST IF NOT DONE", cost],
-      ["TOP 3", topThreeText],
-      ["START", started ? `Autopilot running · ${daily.percent}% วันนี้` : "กด Start My Day เพื่อสร้างแผนและเริ่มวัน"]
+      ["FIRST ACTION", todayWin.firstAction || prime.firstAction || "ทำ action แรก"],
+      ["MEMORY", `${memory.summary || "ยังไม่มี memory จากเมื่อวาน"} · ${momentum.message || ""}`]
     ].map(([label, value]) => `
       <div class="autopilot-line">
         <span>${escapeHtml(label)}</span>
@@ -579,19 +583,65 @@
     `).join("");
     const topThreeNode = $("#browserTopThree");
     if (topThreeNode) {
-      topThreeNode.innerHTML = "";
+      topThreeNode.innerHTML = renderRealityCheck(reality, brief) + renderDailyCloseLoop(day);
     }
     const actions = $("#browserCommandActions");
     if (actions) {
       actions.innerHTML = started ? `
+        <button class="primary-btn" data-browser-action="daily-win" type="button">${todayWin.completedAt ? "ชนะวันนี้แล้ว ✓" : "ชนะวันนี้แล้ว"}</button>
         <button class="soft-btn" data-browser-action="teach" type="button">สอนฉัน</button>
         <button class="soft-btn" data-browser-action="drive" type="button">บทเรียนขับรถ</button>
-        <button class="primary-btn" data-browser-action="complete-focus" type="button">เสร็จแล้ว</button>
-        <button class="ghost-btn" data-browser-action="details" id="mobileDetailsToggle" type="button">${state.settings.mobileDetailsOpen ? "ซ่อนรายละเอียด" : "ดูรายละเอียดทั้งหมด"}</button>
+        <button class="ghost-btn" data-browser-action="close-loop" type="button">ปิดวัน 20 วิ</button>
+        <button class="ghost-btn" data-browser-action="details" id="mobileDetailsToggle" type="button">${state.settings.mobileDetailsOpen ? "ซ่อนรายละเอียด" : "ดูบทเรียน/งานวันนี้"}</button>
       ` : `
         <button class="primary-btn one-button" data-browser-action="start" type="button">เริ่มวันนี้</button>
       `;
     }
+  }
+
+  function renderRealityCheck(reality, brief) {
+    const revenue = brief.revenueRadar?.[0];
+    const optionButton = (group, value, label, current) => `
+      <button class="${String(current) === String(value) ? "active" : ""}" data-reality="${group}:${value}" type="button">${label}</button>
+    `;
+    return `
+      <div class="reality-check">
+        <span>Reality Check · แตะปรับ 5 วินาที</span>
+        <div class="reality-row">
+          <b>พลัง</b>
+          ${optionButton("energy", "low", "ต่ำ", reality.energy)}
+          ${optionButton("energy", "normal", "ปกติ", reality.energy)}
+          ${optionButton("energy", "good", "ดี", reality.energy)}
+        </div>
+        <div class="reality-row">
+          <b>งานขาย</b>
+          ${optionButton("salesLoad", "light", "เบา", reality.salesLoad)}
+          ${optionButton("salesLoad", "normal", "ปกติ", reality.salesLoad)}
+          ${optionButton("salesLoad", "heavy", "หนัก", reality.salesLoad)}
+        </div>
+        <div class="reality-row">
+          <b>เรียน</b>
+          ${optionButton("learningMinutes", 15, "15", reality.learningMinutes)}
+          ${optionButton("learningMinutes", 25, "25", reality.learningMinutes)}
+          ${optionButton("learningMinutes", 45, "45", reality.learningMinutes)}
+        </div>
+        ${revenue ? `<small>Revenue Radar: ${escapeHtml(revenue.name)} · ${escapeHtml(revenue.urgency)} · ${escapeHtml(revenue.nextAction)}</small>` : ""}
+      </div>
+    `;
+  }
+
+  function renderDailyCloseLoop(day) {
+    if (!day.closeLoopOpen) return "";
+    const close = day.closeLoop || {};
+    return `
+      <form class="daily-close-loop" id="dailyCloseLoopForm">
+        <span>Evening Close · 20 วินาที</span>
+        <label>วันนี้ชนะอะไร?<input name="win" type="text" value="${escapeHtml(close.win || day.dailyWin?.title || "")}" placeholder="ชนะอะไรวันนี้"></label>
+        <label>อะไรค้าง?<input name="pending" type="text" value="${escapeHtml(close.pending || "")}" placeholder="สิ่งที่ต้อง carry over"></label>
+        <label>พรุ่งนี้ต้องปกป้องอะไร?<input name="protect" type="text" value="${escapeHtml(close.protect || "")}" placeholder="เวลา/พลัง/ครอบครัว/งานขาย"></label>
+        <button class="primary-btn" type="submit">บันทึกปิดวัน</button>
+      </form>
+    `;
   }
 
   function buildDoNotDoToday(current, brief) {
@@ -813,12 +863,39 @@
   }
 
   function renderSales(today) {
+    state.executive ||= {};
+    state.executive.salesPipeline ||= [];
     const customer = localCustomer(today.customer);
     const lesson = Engine.lessonForToday(state, roadmaps, "elite_b2b_sales");
     const isDone = Boolean(Engine.dayState(state).tasks.elite_b2b_sales || Engine.dayState(state).tasks.sales);
+    const rankedCustomers = Engine.salesPipelineForExecutive?.(state, today) || [];
+    const topCustomer = rankedCustomers[0] || {
+      name: customer.name,
+      status: "meeting today",
+      priority: "high",
+      preparationStatus: customer.closingObjective,
+      followUpRequired: true
+    };
+    const editableCustomers = Array.from({ length: 3 }, (_, index) => {
+      const item = state.executive?.salesPipeline?.[index] || {};
+      return {
+        name: item.name || "",
+        status: item.status || "follow-up required",
+        priority: item.priority || "medium",
+        preparationStatus: item.preparationStatus || "",
+        followUpRequired: Boolean(item.followUpRequired),
+        ageHours: Number(item.ageHours || item.waitingHours || 0)
+      };
+    });
     $("#salesCard").innerHTML = `
       <div class="panel-title">${t("salesFocus")} <small>${t("premiumLeatherAE")}</small></div>
       <div class="module-body">
+        <div class="sales-autopilot-card">
+          <span class="eyebrow">Sales Autopilot</span>
+          <h3>${escapeHtml(topCustomer.name)}</h3>
+          <p>${escapeHtml(topCustomer.status)} · ${escapeHtml(topCustomer.priority || "medium")} priority</p>
+          <b>WHY: ${escapeHtml(topCustomer.preparationStatus || customer.closingObjective || "เป็น next step ที่มี leverage สูงสุดวันนี้")}</b>
+        </div>
         <h3>${lesson.title}</h3>
         <div class="field-grid">
           <div class="field"><span>${t("customer")}</span><b>${customer.name}</b></div>
@@ -826,6 +903,31 @@
           <div class="field"><span>${t("hook")}</span><p>${customer.hook}</p></div>
           <div class="field"><span>${t("closingObjective")}</span><p>${customer.closingObjective}</p></div>
         </div>
+        <details class="sales-mission-drawer">
+          <summary>แก้ไขลูกค้า 3 รายวันนี้</summary>
+          <form class="sales-mission-form" id="salesMissionForm">
+            ${editableCustomers.map((item, index) => `
+              <fieldset>
+                <legend>Customer ${index + 1}</legend>
+                <label>ชื่อ/บัญชีลูกค้า<input name="name-${index}" type="text" value="${escapeHtml(item.name)}" placeholder="ชื่อลูกค้า"></label>
+                <label>Status
+                  <select name="status-${index}">
+                    ${["meeting today", "follow-up required", "waiting quotation", "waiting payment", "research"].map(value => `<option value="${value}" ${item.status === value ? "selected" : ""}>${value}</option>`).join("")}
+                  </select>
+                </label>
+                <label>Priority
+                  <select name="priority-${index}">
+                    ${["high", "medium", "low"].map(value => `<option value="${value}" ${item.priority === value ? "selected" : ""}>${value}</option>`).join("")}
+                  </select>
+                </label>
+                <label>Preparation / next step<input name="prep-${index}" type="text" value="${escapeHtml(item.preparationStatus)}" placeholder="sample, quotation, payment, follow-up"></label>
+                <label>รอมาแล้วกี่ชั่วโมง<input name="age-${index}" type="number" min="0" max="999" value="${Number(item.ageHours || 0)}" placeholder="0"></label>
+                <label class="checkbox-line"><input name="follow-${index}" type="checkbox" ${item.followUpRequired ? "checked" : ""}> ต้อง follow-up</label>
+              </fieldset>
+            `).join("")}
+            <button class="soft-btn" type="submit">บันทึก Sales Mission</button>
+          </form>
+        </details>
         <label>${t("meetingNotes")}
           <textarea id="meetingNotes">${Engine.notesFor(state, "elite_b2b_sales").nowWhat || ""}</textarea>
         </label>
@@ -871,20 +973,53 @@
   function renderChecklist() {
     const today = Engine.dayState(state);
     const items = [
-      ["morning", lang() === "th" ? "Morning reset เสร็จแล้ว" : "Morning reset complete"],
-      ["university", lang() === "th" ? "Life OS University เสร็จแล้ว" : "Life OS University complete"],
-      ["sales", lang() === "th" ? "โฟกัสงานขายเสร็จแล้ว" : "Sales focus complete"],
-      ["workout", lang() === "th" ? "Workout เสร็จแล้ว" : "Workout complete"],
-      ["family", lang() === "th" ? "ภารกิจครอบครัวเสร็จแล้ว" : "Family mission complete"],
-      ["night", lang() === "th" ? "Night review เสร็จแล้ว" : "Night review complete"]
+      { id: "health", tasks: ["morning", "workout"], label: lang() === "th" ? "Health mission เสร็จแล้ว" : "Health mission complete" },
+      { id: "learning", tasks: ["university"], label: lang() === "th" ? "Learning mission เสร็จแล้ว" : "Learning mission complete" },
+      { id: "sales", tasks: ["sales"], label: lang() === "th" ? "Sales mission เสร็จแล้ว" : "Sales mission complete" },
+      { id: "family", tasks: ["family"], label: lang() === "th" ? "Family mission เสร็จแล้ว" : "Family mission complete" },
+      { id: "review", tasks: ["night"], label: lang() === "th" ? "Review mission เสร็จแล้ว" : "Review mission complete" }
     ];
 
-    $("#checklist").innerHTML = items.map(([id, label]) => `
-      <div class="check-row ${today.tasks[id] ? "done" : ""}">
-        <button type="button" aria-label="Toggle ${label}" data-toggle-task="${id}">✓</button>
-        <span>${label}</span>
+    $("#checklist").innerHTML = items.map(item => {
+      const done = item.tasks.every(task => today.tasks[task]);
+      return `
+      <div class="check-row ${done ? "done" : ""}">
+        <button type="button" aria-label="Toggle ${item.label}" data-toggle-mission="${item.id}">✓</button>
+        <span>${item.label}</span>
       </div>
-    `).join("");
+    `;
+    }).join("");
+  }
+
+  function missionTasksFor(id) {
+    return {
+      health: ["morning", "workout"],
+      learning: ["university"],
+      sales: ["sales"],
+      family: ["family"],
+      review: ["night"]
+    }[id] || [];
+  }
+
+  function toggleMission(id) {
+    const taskIds = missionTasksFor(id);
+    if (!taskIds.length) return;
+    const today = Engine.dayState(state);
+    const isDone = taskIds.every(task => today.tasks[task]);
+    taskIds.forEach(task => {
+      if (isDone) {
+        delete today.tasks[task];
+      } else if (!today.tasks[task]) {
+        Engine.toggleTask(state, task);
+      }
+    });
+    if (id === "learning" && !isDone) {
+      const focus = Engine.ensureToday(state, roadmaps).dailyFocus?.focus;
+      if (focus) today.tasks[focus] = true;
+    }
+    if (id === "sales" && !isDone) {
+      today.tasks.elite_b2b_sales = true;
+    }
   }
 
   function renderBriefReview() {
@@ -1985,6 +2120,8 @@
       const accordionToggle = event.target.closest("[data-accordion-toggle]");
       const accordionLink = event.target.closest("[data-open-accordion]");
       const resetWeekend = event.target.closest("#resetWeekendDefaultsBtn");
+      const missionToggle = event.target.closest("[data-toggle-mission]");
+      const realityButton = event.target.closest("[data-reality]");
 
       if (accordionToggle) {
         const key = accordionToggle.dataset.accordionToggle;
@@ -2006,15 +2143,45 @@
         return;
       }
 
+      if (realityButton) {
+        const [key, value] = realityButton.dataset.reality.split(":");
+        const today = Engine.dayState(state);
+        today.realityCheck ||= {};
+        today.realityCheck[key] = key === "learningMinutes" ? Number(value) : value;
+        if (key === "learningMinutes") today.availableMinutes = Number(value);
+        today.teachPrompt = Engine.buildTeachMePrompt(state, roadmaps);
+        today.autopilotStatus = "Reality Check อัปเดตแล้ว · Autopilot ปรับ Prime Mission ใหม่";
+        Storage.save(state);
+        renderAll();
+        return;
+      }
+
       if (browserAction) {
         const action = browserAction.dataset.browserAction;
         if (action === "details") {
           state.settings.mobileDetailsOpen = !state.settings.mobileDetailsOpen;
+          state.settings.mobileAccordions ||= {};
+          state.settings.mobileAccordions.learn = state.settings.mobileDetailsOpen;
           saveAndRender();
+          if (state.settings.mobileDetailsOpen) {
+            setTimeout(() => $("#learnSection")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+          }
           return;
         }
         if (action === "start" || action === "generate") {
           startMyDayFlow();
+          return;
+        }
+        if (action === "daily-win") {
+          const win = Engine.completeDailyWin(state, roadmaps);
+          Engine.dayState(state).autopilotStatus = `ชนะวันนี้แล้ว: ${win.title} · ${win.impact || "momentum saved"}`;
+          saveAndRender();
+          return;
+        }
+        if (action === "close-loop") {
+          const today = Engine.dayState(state);
+          today.closeLoopOpen = !today.closeLoopOpen;
+          saveAndRender();
           return;
         }
         if (action === "complete-focus") {
@@ -2175,6 +2342,12 @@
       if (toggle) {
         Engine.toggleTask(state, toggle.dataset.toggleTask);
         saveAndRender();
+        return;
+      }
+
+      if (missionToggle) {
+        toggleMission(missionToggle.dataset.toggleMission);
+        saveAndRender();
       }
     });
 
@@ -2193,6 +2366,39 @@
     });
 
     document.addEventListener("submit", event => {
+      if (event.target.id === "salesMissionForm") {
+        event.preventDefault();
+        const form = new FormData(event.target);
+        state.executive ||= {};
+        state.executive.salesPipeline = [0, 1, 2]
+          .map(index => ({
+            name: String(form.get(`name-${index}`) || "").trim(),
+            status: form.get(`status-${index}`) || "follow-up required",
+            priority: form.get(`priority-${index}`) || "medium",
+            preparationStatus: String(form.get(`prep-${index}`) || "").trim(),
+            followUpRequired: Boolean(form.get(`follow-${index}`)),
+            ageHours: Number(form.get(`age-${index}`) || 0)
+          }))
+          .filter(customer => customer.name);
+        Engine.dayState(state).autopilotStatus = "Sales Mission อัปเดตแล้ว · ระบบเลือก priority ใหม่ให้วันนี้";
+        saveAndRender();
+        return;
+      }
+
+      if (event.target.id === "dailyCloseLoopForm") {
+        event.preventDefault();
+        const form = new FormData(event.target);
+        Engine.saveEveningClose(state, {
+          win: form.get("win") || "",
+          pending: form.get("pending") || "",
+          protect: form.get("protect") || ""
+        });
+        Engine.dayState(state).closeLoopOpen = false;
+        Engine.dayState(state).autopilotStatus = "ปิดวันเรียบร้อย · พรุ่งนี้ Life OS จะจำสิ่งที่ค้างให้";
+        saveAndRender();
+        return;
+      }
+
       if (event.target.id === "weekendSettingsForm") {
         event.preventDefault();
         const form = new FormData(event.target);

@@ -1,6 +1,6 @@
 {
-  "version": "8.2.0",
-  "build": "2026-08-24-001",
-  "updatedAt": "2026-08-24T00:00:00+07:00",
-  "notes": "Reduced mobile clutter, folded learning details, grouped settings, hid weekly review outside Sunday, and added do-not-do guidance"
+  "version": "8.5.0",
+  "build": "2026-08-25-001",
+  "updatedAt": "2026-08-25T00:00:00+07:00",
+  "notes": "Daily Use Engine: Today Win, Yesterday Memory, Daily Win button, 20-second close loop, and carry-over memory"
 }

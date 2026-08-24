@@ -793,6 +793,116 @@
     }[String(status || "").toLowerCase()] || 50;
   }
 
+  function realityCheckFor(state, date = new Date()) {
+    const today = dayState(state, date);
+    const check = today.realityCheck || {};
+    return {
+      energy: check.energy || "normal",
+      salesLoad: check.salesLoad || "normal",
+      learningMinutes: Number(check.learningMinutes || today.availableMinutes || 25)
+    };
+  }
+
+  function drivingContext(date = new Date(), state = null) {
+    const current = getCurrentBlock(date, state);
+    const drivingIds = ["schoolDropoff", "commute", "visits", "visits2", "familyPickup"];
+    return {
+      active: drivingIds.includes(current.id),
+      block: current,
+      safeAction: current.id === "schoolDropoff"
+        ? "ขับรถส่งลูกชายอย่างปลอดภัย ไม่เรียน ไม่ดูจอ"
+        : "ใช้ audio-only หรือไม่ต้องทำอะไรจนกว่าจะจอดรถ"
+    };
+  }
+
+  function dailyUseState(state) {
+    state.executive ||= {};
+    state.executive.dailyUse ||= { dailyOpens: {}, primeWins: {}, closeLoops: {} };
+    state.executive.dailyUse.dailyOpens ||= {};
+    state.executive.dailyUse.primeWins ||= {};
+    state.executive.dailyUse.closeLoops ||= {};
+    return state.executive.dailyUse;
+  }
+
+  function previousDate(date = new Date()) {
+    const previous = new Date(date);
+    previous.setDate(date.getDate() - 1);
+    return previous;
+  }
+
+  function recordDailyOpen(state, date = new Date()) {
+    const key = dateKey(date);
+    const dailyUse = dailyUseState(state);
+    dailyUse.dailyOpens[key] ||= new Date().toISOString();
+    return dailyUse.dailyOpens[key];
+  }
+
+  function countBackwardKeys(date, predicate, limit = 30) {
+    let count = 0;
+    for (let offset = 0; offset < limit; offset++) {
+      const current = new Date(date);
+      current.setDate(date.getDate() - offset);
+      if (!predicate(dateKey(current))) break;
+      count += 1;
+    }
+    return count;
+  }
+
+  function dailyMomentum(state, date = new Date()) {
+    const dailyUse = dailyUseState(state);
+    const openStreak = countBackwardKeys(date, key => Boolean(dailyUse.dailyOpens[key]));
+    const winStreak = countBackwardKeys(date, key => Boolean(dailyUse.primeWins[key]));
+    const learningDays7 = Array.from({ length: 7 }, (_, offset) => {
+      const current = new Date(date);
+      current.setDate(date.getDate() - offset);
+      const day = state.days?.[dateKey(current)];
+      return Boolean(day?.tasks?.university || FACULTIES.some(faculty => day?.tasks?.[faculty]));
+    }).filter(Boolean).length;
+    return {
+      openStreak,
+      winStreak,
+      learningDays7,
+      message: `เปิด Life OS ${openStreak} วันติด · ปิด Prime ${winStreak} วันติด · เรียน ${learningDays7}/7 วัน`
+    };
+  }
+
+  function yesterdayMemory(state, date = new Date()) {
+    const previous = previousDate(date);
+    const key = dateKey(previous);
+    const day = state.days?.[key];
+    if (!day) {
+      return {
+        date: key,
+        summary: "ยังไม่มี memory จากเมื่อวาน",
+        completed: [],
+        pending: [],
+        carryOver: null
+      };
+    }
+    const completed = [];
+    const pending = [];
+    const addMission = (task, label) => {
+      if (day.tasks?.[task]) completed.push(label);
+      else pending.push(label);
+    };
+    addMission("sales", "Sales");
+    addMission("university", "Learning");
+    addMission("workout", "Health/Workout");
+    addMission("family", "Family");
+    addMission("night", "Night Review");
+    if (day.closeLoop?.pending) pending.unshift(day.closeLoop.pending);
+    const carryOver = pending[0] || null;
+    return {
+      date: key,
+      summary: completed.length
+        ? `เมื่อวานปิดได้: ${completed.slice(0, 3).join(", ")}${pending.length ? ` · ค้าง: ${pending.slice(0, 2).join(", ")}` : ""}`
+        : `เมื่อวานยังไม่มี mission ที่ปิดครบ · ค้าง: ${pending.slice(0, 2).join(", ")}`,
+      completed,
+      pending,
+      carryOver
+    };
+  }
+
   function salesPipelineForExecutive(state, today) {
     const pipeline = Array.isArray(state.executive?.salesPipeline) && state.executive.salesPipeline.length
       ? state.executive.salesPipeline
@@ -810,10 +920,218 @@
     const ranked = merged
       .map(customer => ({
         ...customer,
-        priorityScore: priorityWeight(customer.status) + (customer.priority === "high" ? 12 : customer.priority === "medium" ? 6 : 0) + (customer.followUpRequired ? 8 : 0)
+        priorityScore:
+          priorityWeight(customer.status) +
+          (customer.priority === "high" ? 12 : customer.priority === "medium" ? 6 : 0) +
+          (customer.followUpRequired ? 8 : 0) +
+          (Number(customer.ageHours || customer.waitingHours || 0) >= 48 ? 10 : 0)
       }))
       .sort((a, b) => b.priorityScore - a.priorityScore);
     return ranked.slice(0, 4);
+  }
+
+  function buildSalesRevenueRadar(state, today, date = new Date()) {
+    return salesPipelineForExecutive(state, today)
+      .slice(0, 3)
+      .map(customer => {
+        const hours = Number(customer.ageHours || customer.waitingHours || 0);
+        const status = String(customer.status || "").toLowerCase();
+        const urgency = status === "meeting today" || hours >= 48 || status === "waiting payment"
+          ? "High"
+          : status === "waiting quotation" || customer.followUpRequired
+            ? "Medium"
+            : "Low";
+        const reason = hours >= 48
+          ? `รอเกิน ${hours} ชม. ต้องขยับก่อนเสีย momentum`
+          : status === "waiting payment"
+            ? "รอชำระเงิน เป็น cash/conversion risk ที่ควร review ก่อน"
+            : status === "waiting quotation"
+              ? "ใบเสนอราคาค้าง ทำให้ดีลไม่เดินต่อ"
+              : status === "meeting today"
+                ? "มีนัดวันนี้ ต้องเตรียม objective ให้คม"
+                : customer.followUpRequired
+                  ? "มี follow-up required ใช้เวลาน้อยแต่ช่วยเปิด next step"
+                  : "เป็นบัญชีที่ควรติดตามตาม priority";
+        return {
+          name: customer.name,
+          status: customer.status || "research",
+          priority: customer.priority || "medium",
+          urgency,
+          reason,
+          nextAction: customer.preparationStatus || (urgency === "High" ? "โทร/ส่งข้อความ follow-up หลังจอดรถ" : "review next step"),
+          score: customer.priorityScore || priorityWeight(customer.status)
+        };
+      });
+  }
+
+  function buildAntiOverloadRules(state, today, parts, revenueRadar, date = new Date()) {
+    const reality = realityCheckFor(state, date);
+    const recovery = recoveryStatus(state);
+    const driving = drivingContext(date, state);
+    const current = driving.block;
+    const rules = [];
+    const add = (level, title, why, action) => rules.push({ level, title, why, action, confidence: "High", dataUsed: ["Schedule", "Reality Check", "Recovery", "Sales Pipeline"] });
+
+    if (driving.active) add("red", "Driving Safety Lock", `ตอนนี้อยู่ใน block ${current.title}`, driving.safeAction);
+    if (recovery.level === "poor" || reality.energy === "low") add("orange", "Recovery Load Cap", "พลัง/Recovery ต่ำ จึงห้ามฝืน training หรือเรียนยาว", "เดินเบา ยืดเหยียด หรือเรียนไม่เกิน 15 นาที");
+    if (reality.salesLoad === "heavy" || revenueRadar.some(item => item.urgency === "High")) add("orange", "Sales Load Priority", "งานขายวันนี้มีน้ำหนักสูง ต้องกันเวลาให้ follow-up/quotation/payment ก่อน deep learning", "ปิด Sales next action ก่อนเปิดหัวข้อยาว");
+    if (Number(reality.learningMinutes || 25) <= 15) add("yellow", "Short Learning Mode", "เวลาวันนี้จำกัด จึงต้องลด review และทำแค่ action เดียว", "Teach Me แบบ 15 นาที focus only");
+    if (date.getHours() >= 20 && date.getMinutes() >= 30) add("orange", "Night Protection", "หลัง 20:30 ไม่ควรเปิดงานขายหนักหรือ research ลึก", "ทำ review สั้น เตรียมนอน");
+    return rules.slice(0, 4);
+  }
+
+  function buildPrimeMission(state, today, parts, revenueRadar, overloadRules, date = new Date()) {
+    const reality = realityCheckFor(state, date);
+    const recovery = recoveryStatus(state);
+    const driving = drivingContext(date, state);
+    const current = driving.block;
+    const topRevenue = revenueRadar[0];
+
+    if (driving.active) {
+      const isFamily = current.id === "schoolDropoff" || current.id === "familyPickup";
+      return {
+        type: isFamily ? "Family Prime" : "Sales Prime",
+        title: current.id === "schoolDropoff" ? "ส่งลูกชายไปโรงเรียนอย่างปลอดภัย" : current.mission,
+        why: "Safety block มี priority สูงสุด เพราะการขับรถต้องไม่มี screen/typing/reading",
+        cost: "ถ้าฝืนเรียนหรือดูจอระหว่างขับรถ ความเสี่ยงสูงและเสีย rhythm ทั้งวัน",
+        firstAction: driving.safeAction,
+        confidence: "High",
+        dataUsed: ["Schedule", "Driving Safety"]
+      };
+    }
+
+    if (recovery.level === "poor" || reality.energy === "low") {
+      return {
+        type: "Recovery Prime",
+        title: "ลด load และปกป้อง recovery วันนี้",
+        why: "พลัง/Recovery ต่ำ ทำให้ hard workout และ learning ยาวมีผลเสียมากกว่าผลดี",
+        cost: "ถ้าฝืน จะเสี่ยงพลังตก งานขายหลุด และ sleep rhythm เสียต่อเนื่อง",
+        firstAction: "ทำ movement เบา 10–15 นาที และลดบทเรียนเป็น short mode",
+        confidence: recovery.level === "poor" ? "High" : "Medium",
+        dataUsed: ["Recovery", "Reality Check"]
+      };
+    }
+
+    if (topRevenue && (topRevenue.urgency === "High" || reality.salesLoad === "heavy")) {
+      return {
+        type: "Sales Prime",
+        title: `ขยับดีล: ${topRevenue.name}`,
+        why: topRevenue.reason,
+        cost: "ถ้าไม่ขยับวันนี้ momentum ของดีล/เงินสดอาจช้าลงหรือหลุด follow-up",
+        firstAction: topRevenue.nextAction,
+        confidence: "Medium",
+        dataUsed: ["Sales Pipeline", "Reality Check"]
+      };
+    }
+
+    if (current.id === "university" || date.getHours() < 10) {
+      return {
+        type: "Learning Prime",
+        title: `${parts.learning.focusFacultyName} Day ${parts.learning.currentDay}`,
+        why: "ช่วงเช้าเหมาะกับ learning สั้นก่อนงานขาย และ roadmap จะเดินต่อเมื่อปิดบทเรียน",
+        cost: "ถ้าไม่เรียนวันนี้ currentDay จะไม่เดิน และ compound skill จะสะดุด",
+        firstAction: "กด สอนฉัน แล้วเรียนตามเวลาที่ตั้งไว้",
+        confidence: "High",
+        dataUsed: ["Schedule", "Learning Progress", "Roadmap Metadata"]
+      };
+    }
+
+    return {
+      type: "Family Prime",
+      title: "ปิดวันโดยไม่ให้ครอบครัวโดนงานเบียด",
+      why: parts.family.why,
+      cost: "ถ้างานไหลเข้าเวลาเย็น stress load จะสูงและ sleep rhythm เสีย",
+      firstAction: "กันเวลา 15–20 นาทีแบบไม่จับมือถือ",
+      confidence: "Medium",
+      dataUsed: ["Schedule", "Family Routine"]
+    };
+  }
+
+  function buildTodayWin(state, today, primeMission, memory, date = new Date()) {
+    const day = dayState(state, date);
+    const carry = memory?.carryOver || "";
+    const carryLower = String(carry).toLowerCase();
+    let win = {
+      title: primeMission.title,
+      why: primeMission.why,
+      impact: primeMission.type,
+      firstAction: primeMission.firstAction,
+      missionType: primeMission.type
+    };
+    if (carry && carryLower.includes("sales")) {
+      win = {
+        title: "ปิด Sales carry-over จากเมื่อวาน",
+        why: "งานขายที่ค้างจะกิน momentum ถ้าไม่ปิดเป็นอย่างแรก",
+        impact: "ลดงานค้างและเพิ่มโอกาสขยับดีล",
+        firstAction: "เปิด Sales Mission แล้วทำ next action แรกหลังจอดรถ",
+        missionType: "Sales Prime"
+      };
+    } else if (carry && carryLower.includes("learning")) {
+      win = {
+        title: "ปิดบทเรียนที่ค้างและเดิน roadmap ต่อ",
+        why: "ถ้าไม่ปิด currentDay บทเรียนจะไม่ advance และแรงเรียนจะตก",
+        impact: "รักษา compound skill",
+        firstAction: "กด สอนฉัน แล้วเรียน short mode",
+        missionType: "Learning Prime"
+      };
+    }
+    return {
+      ...win,
+      completedAt: day.dailyWin?.completedAt || null,
+      completedTitle: day.dailyWin?.title || ""
+    };
+  }
+
+  function morningHook(state, todayWin, memory, primeMission, momentum, date = new Date()) {
+    if (todayWin.completedAt) return `ชนะวันนี้แล้ว: ${todayWin.completedTitle || todayWin.title} · ตอนเย็นเหลือแค่ปิด loop 20 วินาที`;
+    if (memory?.carryOver) return `เมื่อวานยังค้าง: ${memory.carryOver} · วันนี้ระบบยกขึ้นมาให้จัดการก่อน`;
+    if (primeMission.type === "Recovery Prime") return "วันนี้ระบบลด load ให้แล้ว เป้าหมายคือไม่ฝืนและรักษา rhythm";
+    if (primeMission.type === "Sales Prime") return "วันนี้อย่าเปิด deep dive ก่อนขยับ Sales Prime";
+    if (momentum.openStreak >= 3) return `คุณเปิด Life OS ${momentum.openStreak} วันติดแล้ว วันนี้รักษา momentum ด้วย win เดียว`;
+    return "วันนี้ไม่ต้องจัดชีวิตใหม่ แค่ปิด win เดียวให้ได้";
+  }
+
+  function completeDailyWin(state, roadmaps, date = new Date()) {
+    const today = ensureToday(state, roadmaps, date);
+    const brief = buildExecutiveBrief(state, roadmaps, date);
+    const win = brief.todayWin;
+    today.dailyWin = {
+      title: win.title,
+      impact: win.impact,
+      missionType: win.missionType || brief.primeMission.type,
+      completedAt: new Date().toISOString()
+    };
+    const dailyUse = dailyUseState(state);
+    dailyUse.primeWins[dateKey(date)] = today.dailyWin;
+    const missionType = win.missionType || brief.primeMission.type;
+    if (missionType === "Learning Prime") {
+      completeTrack(state, today.dailyFocus?.focus || today.currentFaculty || "ai_automation", date);
+      today.tasks.university = true;
+    } else if (missionType === "Sales Prime") {
+      today.tasks.sales = true;
+      today.tasks.elite_b2b_sales = true;
+    } else if (missionType === "Family Prime") {
+      today.tasks.family = true;
+    } else if (missionType === "Recovery Prime") {
+      today.tasks.morning = true;
+      today.tasks.workout = true;
+    }
+    return today.dailyWin;
+  }
+
+  function saveEveningClose(state, payload = {}, date = new Date()) {
+    const today = dayState(state, date);
+    const closeLoop = {
+      win: payload.win || "",
+      pending: payload.pending || "",
+      protect: payload.protect || "",
+      savedAt: new Date().toISOString()
+    };
+    today.closeLoop = closeLoop;
+    today.review = [closeLoop.win, closeLoop.pending, closeLoop.protect].filter(Boolean).join("\n");
+    today.tasks.night = true;
+    dailyUseState(state).closeLoops[dateKey(date)] = closeLoop;
+    return closeLoop;
   }
 
   function sourceStatus(value, allowedStatuses = ["Real", "Manual", "Missing"]) {
@@ -945,8 +1263,13 @@
     return opportunities.slice(0, 4);
   }
 
-  function buildExecutivePriorities(parts) {
-    const priorities = [];
+  function buildExecutivePriorities(parts, primeMission = null, revenueRadar = []) {
+    const priorities = primeMission ? [{
+      title: primeMission.title,
+      why: primeMission.why,
+      expectedImpact: primeMission.type,
+      estimatedTime: primeMission.firstAction
+    }] : [];
     if (parts.health.recommendation.includes("Recovery") || parts.health.recommendation.includes("Mobility") || parts.health.recommendation.includes("Rest")) {
       priorities.push({
         title: parts.health.recommendation,
@@ -955,9 +1278,9 @@
         estimatedTime: parts.health.estimatedTime || "15–30 min"
       });
     }
-    priorities.push({
+    if (!priorities.some(item => item.expectedImpact === "Sales Prime" || item.title.startsWith("Sales:"))) priorities.push({
       title: `Sales: ${parts.sales.topCustomer.name}`,
-      why: parts.sales.why,
+      why: revenueRadar[0]?.reason || parts.sales.why,
       expectedImpact: "เพิ่มความชัดเจนของ next step และลดงานค้าง",
       estimatedTime: "10–20 min prep/follow-up"
     });
@@ -982,6 +1305,7 @@
     state.executive.scores ||= {};
     state.executive.reflections ||= {};
     state.executive.decisions ||= [];
+    recordDailyOpen(state, date);
 
     const daily = dailyScore(state, date);
     const recovery = recoveryStatus(state);
@@ -1098,9 +1422,16 @@
       }
     };
 
-    const radar = buildDecisionRadar(state, parts, date);
+    const revenueRadar = buildSalesRevenueRadar(state, today, date);
+    const antiOverload = buildAntiOverloadRules(state, today, parts, revenueRadar, date);
+    const primeMission = buildPrimeMission(state, today, parts, revenueRadar, antiOverload, date);
+    const memory = yesterdayMemory(state, date);
+    const momentum = dailyMomentum(state, date);
+    const todayWin = buildTodayWin(state, today, primeMission, memory, date);
+    const hook = morningHook(state, todayWin, memory, primeMission, momentum, date);
+    const radar = [...antiOverload, ...buildDecisionRadar(state, parts, date)].slice(0, 5);
     const opportunities = buildOpportunityRadar(state, roadmaps, date);
-    const priorities = buildExecutivePriorities(parts);
+    const priorities = buildExecutivePriorities(parts, primeMission, revenueRadar);
     const trend = executiveScoreTrend(state, date);
     const dueReviews = dueDecisionReviews(state, date);
     const similarDecision = state.executive.decisions
@@ -1116,6 +1447,13 @@
       dataQuality,
       trend,
       parts,
+      primeMission,
+      todayWin,
+      yesterdayMemory: memory,
+      morningHook: hook,
+      momentum,
+      antiOverload,
+      revenueRadar,
       priorities,
       radar,
       opportunities,
@@ -1182,6 +1520,13 @@
     const previousSummary = previousCompletedDay
       ? `Day ${previousCompletedDay} completed on ${dayProgress.lastCompletedDate || "previous session"}. Continue from that roadmap position; Life OS stores progress metadata only, not lesson explanations.`
       : "No previous completed day recorded for this faculty yet.";
+    const executive = buildExecutiveBrief(state, roadmaps, date);
+    const prime = executive.primeMission;
+    const revenue = executive.revenueRadar?.[0];
+    const reality = realityCheckFor(state, date);
+    const memory = executive.yesterdayMemory;
+    const todayWin = executive.todayWin;
+    const overload = (executive.antiOverload || []).map(item => `${item.title}: ${item.action}`).join(" | ") || "No special overload cap.";
 
     return [
       "คุณคือ ChatGPT ในบทบาทอาจารย์มหาวิทยาลัย เพื่อน ที่ปรึกษา และโค้ชส่วนตัวของฉัน",
@@ -1207,6 +1552,15 @@
       mode === "saturday" ? "- วันนี้เป็น Growth + Family Day: AI/Future, Crypto Deep Dive, Sales/AI Automation, Longevity ต้องไม่เบียด sleep หรือ family time" : "",
       mode === "sunday" ? "- วันนี้เป็น Recovery + CEO Review Day: เน้น recovery, family, weekly review, Future Trends และเตรียมสัปดาห์หน้าแบบสงบ" : "",
       `- เวลาที่มี: ${minutes} นาที (${timePlan.label})`,
+      `- One-Tap Reality Check: energy=${reality.energy}, salesLoad=${reality.salesLoad}, learningMinutes=${reality.learningMinutes}`,
+      `- Prime Mission วันนี้: ${prime.type} - ${prime.title}`,
+      `- Today Win: ${todayWin.title} | First Action: ${todayWin.firstAction}`,
+      `- Yesterday Memory: ${memory.summary}`,
+      memory.carryOver ? `- Carry-over ที่ต้องระวัง: ${memory.carryOver}` : "- Carry-over: none",
+      `- Prime WHY: ${prime.why}`,
+      `- Prime FIRST ACTION: ${prime.firstAction}`,
+      `- Anti-Overload Rules: ${overload}`,
+      revenue ? `- Sales Revenue Radar: ${revenue.name} | ${revenue.status} | urgency=${revenue.urgency} | nextAction=${revenue.nextAction}` : "- Sales Revenue Radar: no customer data",
       `- Focus Faculty: ${FACULTY_ICONS[faculty]} ${FACULTY_LABELS[faculty]} (${faculty})`,
       `- Focus Lesson: Day ${lesson.day} - ${lesson.title}`,
       `- Previous Completed Day Summary: ${previousSummary}`,
@@ -1246,11 +1600,15 @@
       "- ถ้าเวลามี 45 นาที ให้สอน Focus และ Review ทั้ง 2 แบบสั้น",
       "- ถ้าเวลามี 60 นาที ให้เพิ่ม action planning 10 นาทีท้าย",
       "- เชื่อมโยงกับงาน AE ขายหนังแท้/หนังเทียม B2B, สุขภาพ, การลงทุน, ครอบครัว และเป้าหมายระยะยาวของฉัน",
+      "- ถ้าวันนี้ Prime Mission เป็น Sales Prime ให้เชื่อม lesson กับ action งานขายโดยตรง",
+      "- ถ้าวันนี้ Prime Mission เป็น Recovery Prime ให้ลดความยาว ลด cognitive load และให้ action เบา",
+      "- ถ้าวันนี้ Prime Mission เป็น Family/Driving Prime ให้ทำเป็น audio-safe และไม่ให้ดูจอ",
       "",
       "จบบทเรียนด้วย:",
-      "1. สิ่งที่ต้องทำวันนี้",
+      "1. Action เดียวที่ต้องทำวันนี้",
       "2. สรุป 5 บรรทัด",
-      "3. Preview บทเรียนพรุ่งนี้"
+      "3. Quiz 3 ข้อพร้อมเฉลยสั้น",
+      "4. Preview บทเรียนพรุ่งนี้"
     ].join("\n");
   }
 
@@ -1261,7 +1619,7 @@
       buildTeachMePrompt(state, roadmaps, date),
       "",
       "โหมดพิเศษ: Drive Lesson",
-      "- ทำเป็นบทเรียนเสียง 30-40 นาที",
+      "- ทำเป็นบทเรียนเสียงตามเวลาที่ Life OS ตั้งไว้ โดย default 25 นาที",
       "- สมมติว่าฉันกำลังขับรถ",
       "- ห้ามให้ดู chart, table, dashboard หรืออ่านข้อความยาวระหว่างขับรถ",
       "- ใช้จังหวะการเล่าแบบฟังง่าย",
@@ -1305,6 +1663,13 @@
     skipTrack,
     repairProgress,
     buildExecutiveBrief,
+    realityCheckFor,
+    drivingContext,
+    recordDailyOpen,
+    dailyMomentum,
+    yesterdayMemory,
+    completeDailyWin,
+    saveEveningClose,
     buildLifeBalance,
     weekendDashboard,
     weekendExercisePlan,
@@ -1313,6 +1678,10 @@
     weeklyScore,
     completionPercent,
     notesFor,
+    salesPipelineForExecutive,
+    buildSalesRevenueRadar,
+    buildAntiOverloadRules,
+    buildPrimeMission,
     buildTeachMePrompt,
     buildDriveLessonPrompt
   };
