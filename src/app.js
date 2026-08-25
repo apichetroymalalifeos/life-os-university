@@ -8,7 +8,7 @@
   const roadmaps = window.LIFE_OS_ROADMAPS;
   let state = Storage.load();
   let pwaStatusMessage = "";
-  const APP_VERSION = "8.5.1";
+  const APP_VERSION = "8.6.0";
   const LIFE_OS_CACHE_PREFIX = "life-os-university-pwa-";
   let pendingServiceWorker = null;
   let updateVersionInfo = null;
@@ -46,7 +46,7 @@
       streak: "Streak",
       best: "Best",
       roadmapCompletion: "Roadmap Completion",
-      todaysSalesFocusPrefix: "Today's sales focus:",
+      todaysSalesFocusPrefix: "Today's life focus:",
       missionTimeline: "Mission Timeline",
       autoHighlighted: "Auto-highlighted by current time",
       now: "NOW",
@@ -197,7 +197,7 @@
       streak: "Streak",
       best: "ดีที่สุด",
       roadmapCompletion: "ความคืบหน้า Roadmap",
-      todaysSalesFocusPrefix: "โฟกัสงานขายวันนี้:",
+      todaysSalesFocusPrefix: "โฟกัสชีวิตวันนี้:",
       missionTimeline: "ไทม์ไลน์ภารกิจ",
       autoHighlighted: "ไฮไลต์ตามเวลาปัจจุบัน",
       now: "ตอนนี้",
@@ -541,7 +541,8 @@
     $("#currentStreak").textContent = state.streaks.current;
     $("#longestStreak").textContent = state.streaks.longest;
     $("#completionPct").textContent = `${Engine.completionPercent(state)}%`;
-    $("#todayFocus").textContent = today.customer ? localCustomer(today.customer).closingObjective : t("generateToDefineSales");
+    const brief = Engine.buildExecutiveBrief(state, roadmaps);
+    $("#todayFocus").textContent = brief.todayWin?.title || current.mission || t("generateToDefineSales");
     if ($("#mobileStatus")) $("#mobileStatus").textContent = `${Engine.modeLabel?.(mode) || t("todayStatus")} · ${daily.percent}%`;
   }
 
@@ -571,11 +572,15 @@
     const metricsNode = $("#browserCommandMetrics");
     const topThreeNode = $("#browserTopThree");
     const actions = $("#browserCommandActions");
+    const disciplineRail = $("#disciplineRail");
 
     titleNode.textContent = todayWin.completedAt ? "วันนี้ชนะแล้ว" : started ? "Today Win" : "ภารกิจเดียววันนี้";
     detailNode.textContent = started
       ? (day.autopilotStatus || brief.morningHook || `วันนี้ห้าม: ${doNot.join(" / ") || "ไม่เปิดรายละเอียดก่อนเริ่ม"}${overloadText ? ` · Guardrail: ${overloadText}` : ""}`)
       : `${todayWin.title || prime.title || current.mission} · กดเริ่มเมื่อพร้อม แล้วระบบค่อยเปิดเครื่องมือที่จำเป็น`;
+    if (disciplineRail) {
+      disciplineRail.innerHTML = renderDisciplineRail();
+    }
 
     if (!started) {
       metricsNode.innerHTML = "";
@@ -610,6 +615,37 @@
         <button class="ghost-btn" data-browser-action="details" id="mobileDetailsToggle" type="button">${state.settings.mobileDetailsOpen ? "ซ่อนรายละเอียด" : "ดูบทเรียน/งานวันนี้"}</button>
       `;
     }
+  }
+
+  function renderDisciplineRail() {
+    const now = new Date();
+    const current = Engine.getCurrentBlock(now, state);
+    const blocks = Engine.scheduleForDate(state, now);
+    const currentIndex = Math.max(0, blocks.findIndex(block => block.id === current.id));
+    const visibleBlocks = blocks.map((block, index) => {
+      const display = localBlock(block);
+      const isActive = block.id === current.id;
+      const isPast = !isActive && currentIndex > -1 && index < currentIndex;
+      const isDriving = ["schoolDropoff", "commute", "visits", "visits2", "familyPickup"].includes(block.id);
+      const label = isActive ? "ตอนนี้" : isPast ? "ผ่านแล้ว" : "ถัดไป";
+      return `
+        <article class="discipline-slot ${isActive ? "active" : ""} ${isPast ? "past" : ""}">
+          <time>${escapeHtml(block.start)}–${escapeHtml(block.end)}</time>
+          <div>
+            <strong>${escapeHtml(display.title)}</strong>
+            <span>${escapeHtml(display.mission)}</span>
+          </div>
+          <em>${isDriving ? "ขับรถปลอดภัย" : label}</em>
+        </article>
+      `;
+    }).join("");
+    return `
+      <div class="discipline-rail-head">
+        <span>รางวินัยรายชั่วโมง</span>
+        <small>เปิดดูเวลานี้แล้วทำตามช่องปัจจุบัน ไม่ปล่อยช่องว่างให้เรื่องไร้สาระ</small>
+      </div>
+      <div class="discipline-slot-list">${visibleBlocks}</div>
+    `;
   }
 
   function renderRealityCheck(reality, brief) {

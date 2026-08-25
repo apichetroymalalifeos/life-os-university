@@ -1,6 +1,6 @@
 {
-  "version": "8.5.1",
-  "build": "2026-08-25-002",
-  "updatedAt": "2026-08-25T01:00:00+07:00",
-  "notes": "Daily Use Loop hardening: one-mission start screen, idempotent win button, Thai carry-over memory, and cleaner evening close loop"
+  "version": "8.6.0",
+  "build": "2026-08-25-003",
+  "updatedAt": "2026-08-25T02:00:00+07:00",
+  "notes": "Discipline Timeline: restores hourly life schedule in Command Center and rebalances Prime Mission toward health, learning, family, discipline, and decision quality before sales outside sales windows"
 }

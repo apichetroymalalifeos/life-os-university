@@ -999,17 +999,33 @@
     const driving = drivingContext(date, state);
     const current = driving.block;
     const topRevenue = revenueRadar[0];
+    const hour = date.getHours();
+    const salesBlockIds = ["work", "breathing", "visits", "visits2"];
+    const morningDisciplineIds = ["wake", "mobility", "leavePrep", "postDriveReset", "personalPrep"];
+    const isSalesWindow = salesBlockIds.includes(current.id) || (hour >= 8 && hour < 16 && reality.salesLoad === "heavy");
 
     if (driving.active) {
       const isFamily = current.id === "schoolDropoff" || current.id === "familyPickup";
       return {
-        type: isFamily ? "Family Prime" : "Sales Prime",
+        type: isFamily ? "Family Prime" : "Discipline Prime",
         title: current.id === "schoolDropoff" ? "ส่งลูกชายไปโรงเรียนอย่างปลอดภัย" : current.mission,
         why: "Safety block มี priority สูงสุด เพราะการขับรถต้องไม่มี screen/typing/reading",
         cost: "ถ้าฝืนเรียนหรือดูจอระหว่างขับรถ ความเสี่ยงสูงและเสีย rhythm ทั้งวัน",
         firstAction: driving.safeAction,
         confidence: "High",
         dataUsed: ["Schedule", "Driving Safety"]
+      };
+    }
+
+    if (morningDisciplineIds.includes(current.id)) {
+      return {
+        type: "Discipline Prime",
+        title: current.mission,
+        why: "ช่วงเช้าคือฐานวินัยของวัน ถ้าหลุดตั้งแต่ต้นวัน ระบบที่เหลือจะเสีย momentum",
+        cost: "ถ้าปล่อยช่องว่างตอนเช้าไปหาเรื่องไร้สาระ จะกินเวลาเรียน สุขภาพ และสมาธิงานทั้งวัน",
+        firstAction: current.detail || current.mission,
+        confidence: "High",
+        dataUsed: ["Schedule", "Life Discipline"]
       };
     }
 
@@ -1025,7 +1041,7 @@
       };
     }
 
-    if (topRevenue && (topRevenue.urgency === "High" || reality.salesLoad === "heavy")) {
+    if (topRevenue && isSalesWindow && (topRevenue.urgency === "High" || reality.salesLoad === "heavy")) {
       return {
         type: "Sales Prime",
         title: `ขยับดีล: ${topRevenue.name}`,
@@ -1046,6 +1062,18 @@
         firstAction: "กด สอนฉัน แล้วเรียนตามเวลาที่ตั้งไว้",
         confidence: "High",
         dataUsed: ["Schedule", "Learning Progress", "Roadmap Metadata"]
+      };
+    }
+
+    if (current.id === "meal" || current.id === "walk" || current.id === "workout" || current.id === "night") {
+      return {
+        type: "Recovery Prime",
+        title: current.mission,
+        why: "Health rhythm คือฐานของ longevity, decision quality และพลังงานสำหรับงาน AE",
+        cost: "ถ้าข้าม block สุขภาพซ้ำ ๆ จะเสียพลัง สมาธิ และ sleep consistency",
+        firstAction: current.detail || current.mission,
+        confidence: "High",
+        dataUsed: ["Schedule", "Health Goal", "Recovery"]
       };
     }
 
@@ -1145,6 +1173,8 @@
     } else if (missionType === "Recovery Prime") {
       today.tasks.morning = true;
       today.tasks.workout = true;
+    } else if (missionType === "Discipline Prime") {
+      today.tasks.morning = true;
     }
     return today.dailyWin;
   }
@@ -1308,24 +1338,31 @@
         estimatedTime: parts.health.estimatedTime || "15–30 min"
       });
     }
-    if (!priorities.some(item => item.expectedImpact === "Sales Prime" || item.title.startsWith("Sales:"))) priorities.push({
-      title: `Sales: ${parts.sales.topCustomer.name}`,
-      why: revenueRadar[0]?.reason || parts.sales.why,
-      expectedImpact: "เพิ่มความชัดเจนของ next step และลดงานค้าง",
-      estimatedTime: "10–20 min prep/follow-up"
-    });
-    priorities.push({
-      title: `Learn: ${parts.learning.focusFacultyName}`,
-      why: parts.learning.why,
-      expectedImpact: "เดินหน้า skill ที่สำคัญที่สุดของวันนี้",
-      estimatedTime: `${parts.learning.estimatedMinutes} min`
-    });
+    if (!priorities.some(item => item.expectedImpact === "Learning Prime" || item.title.startsWith("Learn:"))) {
+      priorities.push({
+        title: `Learn: ${parts.learning.focusFacultyName}`,
+        why: parts.learning.why,
+        expectedImpact: "เดินหน้า skill ที่สำคัญที่สุดของวันนี้",
+        estimatedTime: `${parts.learning.estimatedMinutes} min`
+      });
+    }
     priorities.push({
       title: "Family mission",
       why: parts.family.why,
       expectedImpact: "รักษาคุณภาพครอบครัวและลด stress load ตอนเย็น",
       estimatedTime: "15–20 min quality time"
     });
+    if (
+      revenueRadar[0]?.urgency === "High" &&
+      !priorities.some(item => item.expectedImpact === "Sales Prime" || item.title.startsWith("Sales:"))
+    ) {
+      priorities.push({
+        title: `Sales: ${parts.sales.topCustomer.name}`,
+        why: revenueRadar[0]?.reason || parts.sales.why,
+        expectedImpact: "เพิ่มความชัดเจนของ next step และลดงานค้าง",
+        estimatedTime: "10–20 min prep/follow-up"
+      });
+    }
     return priorities.slice(0, 3);
   }
 

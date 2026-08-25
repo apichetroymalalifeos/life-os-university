@@ -780,6 +780,106 @@ textarea {
   font-size: 15px;
 }
 
+.discipline-rail {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.discipline-rail-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.discipline-rail-head span {
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.discipline-rail-head small {
+  max-width: 620px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.3;
+  text-align: right;
+}
+
+.discipline-slot-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.discipline-slot {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 58px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, .032);
+}
+
+.discipline-slot.active {
+  border-color: rgba(124, 227, 139, .7);
+  background: linear-gradient(135deg, rgba(124, 227, 139, .16), rgba(127, 179, 255, .06));
+  box-shadow: 0 0 0 1px rgba(124, 227, 139, .08);
+}
+
+.discipline-slot.past {
+  opacity: .55;
+}
+
+.discipline-slot time {
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 950;
+  font-variant-numeric: tabular-nums;
+}
+
+.discipline-slot strong {
+  display: block;
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.discipline-slot span {
+  display: -webkit-box;
+  overflow: hidden;
+  margin-top: 2px;
+  color: var(--soft);
+  font-size: 11px;
+  line-height: 1.3;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.discipline-slot em {
+  min-width: 54px;
+  padding: 5px 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
+  text-align: center;
+}
+
+.discipline-slot.active em {
+  border-color: rgba(124, 227, 139, .55);
+  color: var(--green);
+  background: var(--green-soft);
+}
+
 .weekly-review-form {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2232,6 +2332,7 @@ textarea {
     .ceo-review-form,
     .weekly-review-form,
     .today-learning-summary,
+    .discipline-slot-list,
     .checklist,
     .stat-strip,
     .settings-grid,
@@ -2246,6 +2347,25 @@ textarea {
 
   .browser-command-copy h3 {
     font-size: 18px;
+  }
+
+  .discipline-rail-head {
+    display: grid;
+    gap: 3px;
+  }
+
+  .discipline-rail-head small {
+    max-width: none;
+    text-align: left;
+  }
+
+  .discipline-slot {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+
+  .discipline-slot em {
+    grid-column: 2;
+    justify-self: start;
   }
 
   .browser-mini-metric b {
