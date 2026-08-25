@@ -891,16 +891,29 @@
     addMission("family", "Family");
     addMission("night", "Night Review");
     if (day.closeLoop?.pending) pending.unshift(day.closeLoop.pending);
-    const carryOver = pending[0] || null;
+    const protectedFocus = day.closeLoop?.protect || "";
+    const carryOver = pending[0] || protectedFocus || null;
+    const protectText = protectedFocus ? ` · ต้องปกป้องวันนี้: ${protectedFocus}` : "";
     return {
       date: key,
       summary: completed.length
-        ? `เมื่อวานปิดได้: ${completed.slice(0, 3).join(", ")}${pending.length ? ` · ค้าง: ${pending.slice(0, 2).join(", ")}` : ""}`
-        : `เมื่อวานยังไม่มี mission ที่ปิดครบ · ค้าง: ${pending.slice(0, 2).join(", ")}`,
+        ? `เมื่อวานปิดได้: ${completed.slice(0, 3).join(", ")}${pending.length ? ` · ค้าง: ${pending.slice(0, 2).join(", ")}` : ""}${protectText}`
+        : `เมื่อวานยังไม่มี mission ที่ปิดครบ · ค้าง: ${pending.slice(0, 2).join(", ")}${protectText}`,
       completed,
       pending,
-      carryOver
+      carryOver,
+      protectedFocus
     };
+  }
+
+  function classifyCarryOver(text = "") {
+    const value = String(text).toLowerCase();
+    const hasAny = keywords => keywords.some(keyword => value.includes(keyword));
+    if (hasAny(["sales", "ขาย", "ลูกค้า", "ดีล", "quote", "quotation", "ใบเสนอ", "payment", "ชำระ", "follow"])) return "sales";
+    if (hasAny(["learning", "learn", "เรียน", "บทเรียน", "ai", "crypto", "คณะ", "roadmap"])) return "learning";
+    if (hasAny(["family", "ครอบครัว", "ลูก", "รับลูก", "ส่งลูก"])) return "family";
+    if (hasAny(["sleep", "recovery", "นอน", "พัก", "ฟื้นตัว", "สุขภาพ", "workout", "ออกกำลัง"])) return "recovery";
+    return "general";
   }
 
   function salesPipelineForExecutive(state, today) {
@@ -1050,7 +1063,7 @@
   function buildTodayWin(state, today, primeMission, memory, date = new Date()) {
     const day = dayState(state, date);
     const carry = memory?.carryOver || "";
-    const carryLower = String(carry).toLowerCase();
+    const carryType = classifyCarryOver(carry);
     let win = {
       title: primeMission.title,
       why: primeMission.why,
@@ -1058,7 +1071,7 @@
       firstAction: primeMission.firstAction,
       missionType: primeMission.type
     };
-    if (carry && carryLower.includes("sales")) {
+    if (carry && carryType === "sales") {
       win = {
         title: "ปิด Sales carry-over จากเมื่อวาน",
         why: "งานขายที่ค้างจะกิน momentum ถ้าไม่ปิดเป็นอย่างแรก",
@@ -1066,13 +1079,29 @@
         firstAction: "เปิด Sales Mission แล้วทำ next action แรกหลังจอดรถ",
         missionType: "Sales Prime"
       };
-    } else if (carry && carryLower.includes("learning")) {
+    } else if (carry && carryType === "learning") {
       win = {
         title: "ปิดบทเรียนที่ค้างและเดิน roadmap ต่อ",
         why: "ถ้าไม่ปิด currentDay บทเรียนจะไม่ advance และแรงเรียนจะตก",
         impact: "รักษา compound skill",
         firstAction: "กด สอนฉัน แล้วเรียน short mode",
         missionType: "Learning Prime"
+      };
+    } else if (carry && carryType === "family") {
+      win = {
+        title: "ปิดภารกิจครอบครัวที่ค้าง",
+        why: "เรื่องครอบครัวเป็น rhythm หลัก ถ้าปล่อยค้างจะเพิ่ม stress load ตอนเย็น",
+        impact: "ลดแรงเสียดทานในบ้านและปกป้องเวลาคุณภาพ",
+        firstAction: "ส่งข้อความ/จัดเวลาให้ชัด แล้วกัน 15–20 นาทีแบบไม่จับมือถือ",
+        missionType: "Family Prime"
+      };
+    } else if (carry && carryType === "recovery") {
+      win = {
+        title: "ปกป้อง recovery ที่หลุดจากเมื่อวาน",
+        why: "ถ้าพลังสะสมต่ำ ระบบที่เหลือจะพังง่าย ทั้งงานขาย การเรียน และครอบครัว",
+        impact: "ลด stress load และรักษา rhythm สำหรับวันถัดไป",
+        firstAction: "ลดงานหนักหนึ่งอย่าง เดินเบา/ยืดเหยียด 10 นาที และตั้งเวลานอนคืนนี้",
+        missionType: "Recovery Prime"
       };
     }
     return {
@@ -1093,6 +1122,7 @@
 
   function completeDailyWin(state, roadmaps, date = new Date()) {
     const today = ensureToday(state, roadmaps, date);
+    if (today.dailyWin?.completedAt) return today.dailyWin;
     const brief = buildExecutiveBrief(state, roadmaps, date);
     const win = brief.todayWin;
     today.dailyWin = {

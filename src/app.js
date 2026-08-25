@@ -8,7 +8,7 @@
   const roadmaps = window.LIFE_OS_ROADMAPS;
   let state = Storage.load();
   let pwaStatusMessage = "";
-  const APP_VERSION = "8.5.0";
+  const APP_VERSION = "8.5.1";
   const LIFE_OS_CACHE_PREFIX = "life-os-university-pwa-";
   let pendingServiceWorker = null;
   let updateVersionInfo = null;
@@ -561,15 +561,32 @@
     const overload = (brief.antiOverload || []).slice(0, 2);
     const day = Engine.dayState(state);
     const started = Boolean(day.autopilotStarted);
-    const topThreeText = topThree.map((priority, index) => `${index + 1}. ${priority.title}`).join(" · ") || "1. กด Start My Day";
     const mainWhy = todayWin.why || prime.why || topThree[0]?.why || current.detail || "This is the highest-leverage next action for today.";
     const cost = prime.cost || "ถ้าไม่ปิด win เดียววันนี้ งานสำคัญจะเลื่อนไปสะสมวันถัดไป";
     const doNot = buildDoNotDoToday(current, brief);
     const overloadText = overload.map(item => item.action).join(" / ");
 
-    $("#browserCommandTitle").textContent = todayWin.completedAt ? "วันนี้ชนะแล้ว" : "Today Win";
-    $("#browserCommandDetail").textContent = day.autopilotStatus || brief.morningHook || `วันนี้ห้าม: ${doNot.join(" / ") || "ไม่เปิดรายละเอียดก่อนเริ่ม"}${overloadText ? ` · Guardrail: ${overloadText}` : ""}`;
-    $("#browserCommandMetrics").innerHTML = [
+    const titleNode = $("#browserCommandTitle");
+    const detailNode = $("#browserCommandDetail");
+    const metricsNode = $("#browserCommandMetrics");
+    const topThreeNode = $("#browserTopThree");
+    const actions = $("#browserCommandActions");
+
+    titleNode.textContent = todayWin.completedAt ? "วันนี้ชนะแล้ว" : started ? "Today Win" : "ภารกิจเดียววันนี้";
+    detailNode.textContent = started
+      ? (day.autopilotStatus || brief.morningHook || `วันนี้ห้าม: ${doNot.join(" / ") || "ไม่เปิดรายละเอียดก่อนเริ่ม"}${overloadText ? ` · Guardrail: ${overloadText}` : ""}`)
+      : `${todayWin.title || prime.title || current.mission} · กดเริ่มเมื่อพร้อม แล้วระบบค่อยเปิดเครื่องมือที่จำเป็น`;
+
+    if (!started) {
+      metricsNode.innerHTML = "";
+      if (topThreeNode) topThreeNode.innerHTML = "";
+      if (actions) {
+        actions.innerHTML = `<button class="primary-btn one-button" data-browser-action="start" type="button">เริ่มวันนี้</button>`;
+      }
+      return;
+    }
+
+    metricsNode.innerHTML = [
       ["วันนี้ชนะถ้า", todayWin.title || prime.title || current.mission],
       ["WHY", mainWhy],
       ["COST IF NOT DONE", cost],
@@ -581,20 +598,16 @@
         <b>${escapeHtml(value)}</b>
       </div>
     `).join("");
-    const topThreeNode = $("#browserTopThree");
     if (topThreeNode) {
       topThreeNode.innerHTML = renderRealityCheck(reality, brief) + renderDailyCloseLoop(day);
     }
-    const actions = $("#browserCommandActions");
     if (actions) {
-      actions.innerHTML = started ? `
-        <button class="primary-btn" data-browser-action="daily-win" type="button">${todayWin.completedAt ? "ชนะวันนี้แล้ว ✓" : "ชนะวันนี้แล้ว"}</button>
+      actions.innerHTML = `
+        <button class="primary-btn" data-browser-action="daily-win" type="button" ${todayWin.completedAt ? "disabled" : ""}>${todayWin.completedAt ? "ชนะวันนี้แล้ว ✓" : "ชนะวันนี้แล้ว"}</button>
         <button class="soft-btn" data-browser-action="teach" type="button">สอนฉัน</button>
         <button class="soft-btn" data-browser-action="drive" type="button">บทเรียนขับรถ</button>
-        <button class="ghost-btn" data-browser-action="close-loop" type="button">ปิดวัน 20 วิ</button>
+        <button class="${todayWin.completedAt ? "primary-btn" : "ghost-btn"}" data-browser-action="close-loop" type="button">ปิดวัน 20 วิ</button>
         <button class="ghost-btn" data-browser-action="details" id="mobileDetailsToggle" type="button">${state.settings.mobileDetailsOpen ? "ซ่อนรายละเอียด" : "ดูบทเรียน/งานวันนี้"}</button>
-      ` : `
-        <button class="primary-btn one-button" data-browser-action="start" type="button">เริ่มวันนี้</button>
       `;
     }
   }
@@ -1770,7 +1783,7 @@
     Engine.repairProgress?.(state);
     const today = Engine.generateToday(state, roadmaps);
     today.autopilotStarted = true;
-    today.generateStatus = "Autopilot พร้อมแล้ว: ทำ Top 3 วันนี้ตามลำดับ";
+    today.generateStatus = "Autopilot พร้อมแล้ว: ทำ Today Win ก่อนอย่างอื่น";
     today.teachPrompt = Engine.buildTeachMePrompt(state, roadmaps);
     state.settings.mobileDetailsOpen = false;
     Storage.save(state);

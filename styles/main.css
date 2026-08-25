@@ -399,6 +399,16 @@ textarea {
   transform: translateY(-1px);
 }
 
+.btn:disabled,
+.ghost-btn:disabled,
+.primary-btn:disabled,
+.soft-btn:disabled,
+.danger-btn:disabled {
+  cursor: default;
+  opacity: .72;
+  transform: none;
+}
+
 .primary-btn {
   background: linear-gradient(135deg, var(--green-2), #61cc76);
   color: #06100b;
